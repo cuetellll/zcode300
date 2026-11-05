@@ -1,5 +1,6 @@
 # Radio worker runtime (installed into /opt/radio-venv inside the Docker image)
-livekit-rtc>=1.0,<2
+# PyPI package `livekit` provides the livekit.rtc module (Real-Time SDK).
+livekit>=1.0,<2
 
 # POC only (workers/radio/poc.py) — token generation for standalone testing
 livekit-api>=1.0,<2

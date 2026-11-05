@@ -53,7 +53,7 @@ Radio Worker سرویس جداگانه **نخواهد بود** — داخل هم
 
 1. Push به GitHub → CI (`.github/workflows/ci.yml`) باید سبز شود: typecheck، build، تست، اعمال Migration روی Postgres خالی، چک نحوی پایتون.
 2. در Railway دکمه **Deploy** را بزن. لاگ Build باید نشان دهد:
-   - `npm install`، `prisma generate`، build API و Web، ساخت `/opt/radio-venv` با `livekit-rtc`، نصب `ffmpeg`.
+   - `npm install`، `prisma generate`، build API و Web، ساخت `/opt/radio-venv` با بسته‌ی `livekit`، نصب `ffmpeg`.
 3. در لاگ Deploy (Start) باید ببینی:
    - چند خط `migration applied` (شامل `20261105000000_radio_rebuild`) — این Migration تبدیل داده + حذف جدول‌های موسیقی را انجام می‌دهد.
    - بعد: `mahyar-gap api listening {"radioEnabled":true,...}`.

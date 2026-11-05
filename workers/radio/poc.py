@@ -5,7 +5,7 @@ audio can be verified in a browser before the full integration runs.
 
 Prerequisites (any machine or the Railway container shell):
   - python3, ffmpeg + ffprobe on PATH
-  - pip install livekit-rtc livekit-api
+  - pip install livekit livekit-api
 
 Usage:
   python3 poc.py \
@@ -25,14 +25,14 @@ import asyncio
 import contextlib
 
 from livekit import rtc
-from livekit_api import AccessToken as ApiAccessToken
+from livekit import api as livekit_api
 
 from stream_decoder import StreamDecoder
 from protocol import log
 
 
 async def run(args: argparse.Namespace) -> int:
-    token_builder = ApiAccessToken(args.api_key, args.api_secret)
+    token_builder = livekit_api.AccessToken(args.api_key, args.api_secret)
     token_builder.with_identity(args.identity).with_name("Mahyar Radio POC").with_grants(
         room_join=True,
         room=args.room,

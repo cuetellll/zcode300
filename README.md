@@ -15,7 +15,7 @@ A private, Discord-inspired communication space for a small circle of friends: r
 | Database   | PostgreSQL (Railway) |
 | Realtime   | Socket.IO (authorized rooms, presence, typing, voice state, radio state) |
 | Voice/Video| LiveKit (mic, camera, screen share + audio) |
-| Radio      | Python worker (`livekit-rtc`) + FFmpeg, spawned **on demand** as a child process |
+| Radio      | Python worker (`livekit` / livekit.rtc) + FFmpeg, spawned **on demand** as a child process |
 | Storage    | Railway S3-compatible private bucket (chat attachments only) |
 
 ## Repository layout

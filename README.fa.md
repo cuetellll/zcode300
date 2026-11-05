@@ -15,7 +15,7 @@
 | دیتابیس | PostgreSQL (Railway) |
 | Realtime | Socket.IO (اتاق‌های مجاز، presence، typing، وضعیت Voice، وضعیت رادیو) |
 | صدا/ویدئو | LiveKit (میکروفن، دوربین، اشتراک صفحه + صدای سیستم) |
-| رادیو | Worker پایتون (`livekit-rtc`) + FFmpeg — فقط **در زمان نیاز** به‌صورت Child Process |
+| رادیو | Worker پایتون (بسته‌ی `livekit` / livekit.rtc) + FFmpeg — فقط **در زمان نیاز** به‌صورت Child Process |
 | Storage | باکت خصوصی S3-سازگار Railway (فقط پیوست‌های چت) |
 
 ## ساختار مخزن
