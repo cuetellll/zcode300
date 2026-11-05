@@ -78,15 +78,11 @@ export function AppShell() {
         {mainView === 'server' && memberSidebarOpen && stage >= 3 && <MemberSidebar />}
       </div>
 
-      {stage >= 4 && (
-        <>
-          <SettingsModal />
-          <ServerModals />
-          <CreateChannelModal />
-          <NotificationsPanel />
-          <UserProfileModal />
-        </>
-      )}
+      {(stage === 4 || stage === 7) && <SettingsModal />}
+      {(stage === 4 || stage === 8) && <ServerModals />}
+      {(stage === 4 || stage === 9) && <CreateChannelModal />}
+      {(stage === 4 || stage === 10) && <NotificationsPanel />}
+      {(stage === 4 || stage === 11) && <UserProfileModal />}
 
       <div className="pointer-events-none fixed bottom-4 start-1/2 z-[60] flex -translate-x-1/2 flex-col items-center gap-2 rtl:translate-x-1/2">
         {toasts.map((toast) => (
