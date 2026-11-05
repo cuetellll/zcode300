@@ -57,7 +57,7 @@ export function attachRealtime(io: SocketServer): void {
     }, 10_000);
     window.unref();
     socket.once('disconnect', () => clearInterval(window));
-    socket.use((event, nextEvent) => {
+    socket.use((_event, nextEvent) => {
       count += 1;
       if (count > 60) {
         nextEvent(new Error('Socket event rate limit exceeded'));

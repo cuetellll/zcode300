@@ -1,5 +1,5 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
-import { AccessToken } from 'livekit-server-sdk';
+import { AccessToken, TrackSource } from 'livekit-server-sdk';
 import { env, radioWorkerEntry, radioWorkerPython } from '../config/env';
 import {
   RADIO_BOT_NAME,
@@ -10,7 +10,7 @@ import {
 import { HttpError } from '../lib/errors';
 import { logger } from '../lib/logger';
 
-export type RadioSessionStatus = 'starting' | 'live' | 'error' | 'stopping';
+export type RadioSessionStatus = 'starting' | 'live' | 'error' | 'stopping' | 'stopped';
 
 export interface RadioState {
   channel_id: string;
@@ -192,7 +192,7 @@ export class RadioWorkerManager {
       roomJoin: true,
       room: channelId,
       canPublish: true,
-      canPublishSources: ['microphone'],
+      canPublishSources: [TrackSource.MICROPHONE],
       canSubscribe: false,
       canPublishData: false,
       canUpdateOwnMetadata: false,

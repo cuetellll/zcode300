@@ -508,7 +508,7 @@ const createRoleSchema = z.object({
   permissions: z.array(z.string()).max(20).optional(),
 });
 
-async function validateRoleNodes(serverId: string, isOwner: boolean, nodes: string[]): Promise<string[]> {
+async function validateRoleNodes(isOwner: boolean, nodes: string[]): Promise<string[]> {
   for (const node of nodes) {
     if (!isPermissionNode(node)) throw badRequest(`Unknown permission node: ${node}`);
     if (OWNER_ONLY_NODES.has(node) && !isOwner) {
@@ -525,7 +525,7 @@ serversRouter.post(
     const userId = getUserId(req);
     const ctx = await requireServerPermission(userId, req.params.serverId, 'MANAGE_ROLES');
     const body = createRoleSchema.parse(req.body);
-    const nodes = body.permissions ? await validateRoleNodes(req.params.serverId, ctx.isOwner, body.permissions) : [];
+    const nodes = body.permissions ? await validateRoleNodes(ctx.isOwner, body.permissions) : [];
     const role = await prisma.role.create({
       data: {
         serverId: req.params.serverId,
@@ -557,7 +557,7 @@ serversRouter.patch(
     if (role.name === '@everyone' && (body.name !== undefined || body.permissions !== undefined)) {
       throw forbidden('The @everyone role cannot be renamed or have its permissions replaced');
     }
-    const nodes = body.permissions ? await validateRoleNodes(req.params.serverId, ctx.isOwner, body.permissions) : undefined;
+    const nodes = body.permissions ? await validateRoleNodes(ctx.isOwner, body.permissions) : undefined;
     const updated = await prisma.role.update({
       where: { id: role.id },
       data: {

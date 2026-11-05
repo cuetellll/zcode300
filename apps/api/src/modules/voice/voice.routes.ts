@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { AccessToken, RoomServiceClient } from 'livekit-server-sdk';
+import { AccessToken, RoomServiceClient, TrackSource } from 'livekit-server-sdk';
 import { env } from '../../config/env';
 import { prisma } from '../../lib/prisma';
 import { asyncHandler, forbidden, HttpError, notFound } from '../../lib/errors';
@@ -107,8 +107,8 @@ voiceRouter.post(
       canPublishData: true,
       canPublish: canSpeak || canStream,
       canPublishSources: [
-        ...(canSpeak ? (['microphone'] as const) : []),
-        ...(canStream ? (['camera', 'screen_share', 'screen_share_audio'] as const) : []),
+        ...(canSpeak ? [TrackSource.MICROPHONE] : []),
+        ...(canStream ? [TrackSource.CAMERA, TrackSource.SCREEN_SHARE, TrackSource.SCREEN_SHARE_AUDIO] : []),
       ],
     });
     const jwt = await token.toJwt();
@@ -160,7 +160,12 @@ voiceRouter.post(
       canSubscribe: true,
       canPublish: true,
       canPublishData: true,
-      canPublishSources: ['microphone', 'camera', 'screen_share', 'screen_share_audio'],
+      canPublishSources: [
+        TrackSource.MICROPHONE,
+        TrackSource.CAMERA,
+        TrackSource.SCREEN_SHARE,
+        TrackSource.SCREEN_SHARE_AUDIO,
+      ],
     });
     const jwt = await token.toJwt();
 

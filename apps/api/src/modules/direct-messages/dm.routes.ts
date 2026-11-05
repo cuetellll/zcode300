@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import type { User } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import { asyncHandler, forbidden, HttpError, notFound } from '../../lib/errors';
 import { requireAuth, getUserId } from '../../middleware/auth';
@@ -51,7 +52,7 @@ async function assertNotBlocked(conversationId: string, userId: string): Promise
 function conversationMetaPayload(
   conversationId: string,
   participantIds: string[],
-  usersById: Map<string, { id: string; username: string; displayName: string; avatarUrl: string | null; avatarColor: string; bannerColor: string; status: string; customStatus: string | null; bio: string | null; createdAt: Date }>,
+  usersById: Map<string, User>,
   isGroup: boolean,
   groupName: string | null,
   lastMessageAt: Date | null,
@@ -128,7 +129,7 @@ dmRouter.post(
   asyncHandler(async (req, res) => {
     const userId = getUserId(req);
     const body = createSchema.parse(req.body);
-    const participantIds = [...new Set([userId, ...body.participantIds])].sort();
+    const participantIds = [...new Set([userId, ...body.participant_ids])].sort();
     const isGroup = participantIds.length > 2;
     if (body.group_name && !isGroup) throw new HttpError(400, 'Group name requires at least 3 participants');
     if (participantIds.length < 2) throw new HttpError(400, 'At least one other participant is required');
