@@ -103,6 +103,15 @@ export function buildApp(): Express {
   app.use('/api/radio', radioRouter);
   app.use('/api/notifications', notificationsRouter);
 
+  // -- web static (production SPA) — MUST be registered before the 404 handler
+  const webDist = path.resolve(__dirname, '../../web/dist');
+  if (fs.existsSync(webDist)) {
+    app.use(express.static(webDist, { maxAge: '1h', index: false }));
+    app.get(/^\/(?!api\/|auth\/).*/, (_req: Request, res: Response) => {
+      res.sendFile(path.join(webDist, 'index.html'));
+    });
+  }
+
   // -- 404 -------------------------------------------------------------------
   app.use((req: Request, res: Response) => {
     if (req.path.startsWith('/api/') || req.path.startsWith('/auth/')) {
@@ -146,15 +155,6 @@ export function buildApp(): Express {
     logger.error('unhandled error', { errorId, message: (error as Error)?.message, stack: (error as Error)?.stack });
     res.status(500).json({ error: 'Internal server error', errorId });
   });
-
-  // -- web static (production SPA) --------------------------------------------
-  const webDist = path.resolve(__dirname, '../../web/dist');
-  if (fs.existsSync(webDist)) {
-    app.use(express.static(webDist, { maxAge: '1h', index: false }));
-    app.get(/^\/(?!api\/|auth\/).*/, (_req: Request, res: Response) => {
-      res.sendFile(path.join(webDist, 'index.html'));
-    });
-  }
 
   return app;
 }
