@@ -15,7 +15,10 @@ export function CreateChannelModal() {
   const servers = useDataStore((s) => s.servers);
   const activeServerId = useDataStore((s) => s.activeServerId);
   const loadServerDetail = useDataStore((s) => s.loadServerDetail);
-  const members = useDataStore((s) => s.membersByServer[activeServerId ?? ''] ?? []);
+  // Select the map itself (stable ref); index in the body — a selector that
+  // returns `?? []` creates a new array every call and loops zustand v5.
+  const membersByServer = useDataStore((s) => s.membersByServer);
+  const members = membersByServer[activeServerId ?? ''] ?? [];
   const me = useAuthStore((s) => s.user);
 
   const [name, setName] = useState('');

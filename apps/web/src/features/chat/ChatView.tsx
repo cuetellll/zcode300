@@ -217,13 +217,16 @@ export function ChatView({ channel }: ChatViewProps) {
   const { t } = useI18n();
   const messages = useDataStore((s) => s.messagesByChannel[channel.id]);
   const hasMore = useDataStore((s) => s.hasMoreByChannel[channel.id] ?? false);
-  const typingUsers = useDataStore((s) => s.typing[channel.id] ?? []);
-  const members = useDataStore((s) => s.membersByServer[channel.server_id] ?? []);
   const loadOlder = useDataStore((s) => s.loadOlderMessages);
   const markRead = useDataStore((s) => s.markChannelRead);
   const notifications = useDataStore((s) => s.notifications);
   const openModal = useUiStore((s) => s.openModal);
   const pushToast = useUiStore((s) => s.pushToast);
+  // Stable-map selectors; index in the body (new refs inside selectors loop zustand v5).
+  const typingMap = useDataStore((s) => s.typing);
+  const typingUsers = typingMap[channel.id] ?? [];
+  const membersMap = useDataStore((s) => s.membersByServer);
+  const members = membersMap[channel.server_id] ?? [];
   const [search, setSearch] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);

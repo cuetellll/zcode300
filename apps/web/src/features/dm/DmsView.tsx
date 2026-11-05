@@ -144,7 +144,8 @@ function DmThread({ conversationId }: { conversationId: string }) {
   const conversations = useDataStore((s) => s.conversations);
   const messages = useDataStore((s) => s.dmMessages[conversationId]);
   const hasMore = useDataStore((s) => s.dmHasMore[conversationId] ?? false);
-  const typingUsers = useDataStore((s) => s.dmTyping[conversationId] ?? []);
+  const typingMap = useDataStore((s) => s.dmTyping);
+  const typingUsers = typingMap[conversationId] ?? [];
   const loadOlder = useDataStore((s) => s.loadOlderDmMessages);
   const markRead = useDataStore((s) => s.markChannelRead);
   const pushToast = useUiStore((s) => s.pushToast);
