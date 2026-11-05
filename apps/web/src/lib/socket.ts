@@ -1,5 +1,6 @@
 import { io, type Socket } from 'socket.io-client';
 import { getAccessToken, useAuthStore } from '../stores/auth';
+import { refreshAccessToken } from './api';
 
 let socket: Socket | null = null;
 let connected = false;
@@ -29,10 +30,12 @@ export function onConnect(listener: () => void): void {
 }
 
 export function connectSocket(): void {
-  const token = getAccessToken();
-  if (!token || socket) return;
+  if (socket) return;
+  // auth is a callback so every (re)connect attempt signs in with the
+  // CURRENT in-memory access token (15-min TTL — a static token would be
+  // rejected after expiry and log the user out via connect_error).
   socket = io('/', {
-    auth: { token },
+    auth: (callback) => callback({ token: getAccessToken() ?? '' }),
     transports: ['websocket', 'polling'],
     reconnectionDelayMax: 10_000,
   });
@@ -48,8 +51,15 @@ export function connectSocket(): void {
     connectionListeners.forEach((listener) => listener(false));
   });
 
-  socket.on('connect_error', (error) => {
-    if (/authentication|expired|invalid/i.test(error.message)) {
+  socket.on('connect_error', async (error) => {
+    if (!/authentication|expired|invalid/i.test(error.message)) return;
+    // The handshake token expired. Rotate it silently; only log out when the
+    // refresh session itself is gone.
+    const token = await refreshAccessToken().catch(() => null);
+    if (token) {
+      socket?.disconnect().connect();
+    } else {
+      disconnectSocket();
       useAuthStore.getState().clear();
     }
   });

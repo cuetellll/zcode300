@@ -4,6 +4,7 @@ import { useI18n } from '../../i18n';
 import { useAuthStore } from '../../stores/auth';
 import { useDataStore } from '../../stores/data';
 import { useUiStore } from '../../stores/ui';
+import { useVoiceStore } from '../../stores/voice';
 import { UserPanel } from './UserPanel';
 import type { ChannelDto } from '../../lib/types';
 
@@ -17,6 +18,37 @@ export function ChannelSidebar() {
   const voiceSessions = useDataStore((s) => s.voiceSessions);
   const me = useAuthStore((s) => s.user);
   const openModal = useUiStore((s) => s.openModal);
+  const pushToast = useUiStore((s) => s.pushToast);
+  const voiceMode = useVoiceStore((s) => s.mode);
+  const voiceChannelId = useVoiceStore((s) => s.channelId);
+  const joinVoice = useVoiceStore((s) => s.joinVoice);
+  const leave = useVoiceStore((s) => s.leave);
+
+  /** Voice channels join on click (Discord-style); clicking the connected one leaves. */
+  async function onChannelClick(channel: ChannelDto): Promise<void> {
+    if (channel.type !== 'VOICE') {
+      await selectChannel(channel.id);
+      return;
+    }
+    if (voiceMode === 'voice' && voiceChannelId === channel.id) {
+      await leave();
+      return;
+    }
+    await selectChannel(channel.id);
+    await joinVoice(channel.id);
+    const voice = useVoiceStore.getState();
+    if (voice.mode === 'idle' && voice.lastError) {
+      pushToast(
+        voice.lastError === 'mic-permission'
+          ? t('micPermissionDenied')
+          : voice.lastError === 'camera-permission'
+            ? t('cameraPermissionDenied')
+            : voice.lastError,
+        'error',
+      );
+      voice.clearError();
+    }
+  }
 
   const server = servers.find((s) => s.id === activeServerId);
   const channels: ChannelDto[] = useMemo(() => server?.channels ?? [], [server]);
@@ -89,7 +121,7 @@ export function ChannelSidebar() {
                 <div key={channel.id} className="group/channel relative">
                   <button
                     type="button"
-                    onClick={() => void selectChannel(channel.id)}
+                    onClick={() => void onChannelClick(channel)}
                     className="mb-0.5 flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-start text-sm transition-colors hover:bg-[var(--bg-elevated)]"
                     style={{
                       background: active ? 'var(--bg-elevated)' : undefined,
