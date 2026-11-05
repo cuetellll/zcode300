@@ -1,12 +1,22 @@
 import { io, type Socket } from 'socket.io-client';
 import { getAccessToken, useAuthStore } from '../stores/auth';
-import { handleRealtimeEvent } from '../stores/data';
 
 let socket: Socket | null = null;
 let connected = false;
 
 const connectionListeners = new Set<(connected: boolean) => void>();
 const connectListeners = new Set<() => void>();
+
+/**
+ * Realtime event dispatcher. The stores/data module registers itself here at
+ * boot via setRealtimeHandler() — socket.ts must NOT import stores/data
+ * (circular import crashed the whole bundle at eval time).
+ */
+let realtimeHandler: ((event: string, payload: unknown) => void) | null = null;
+
+export function setRealtimeHandler(handler: (event: string, payload: unknown) => void): void {
+  realtimeHandler = handler;
+}
 
 export function onConnectionChange(listener: (connected: boolean) => void): void {
   connectionListeners.add(listener);
@@ -45,7 +55,7 @@ export function connectSocket(): void {
   });
 
   for (const event of REALTIME_EVENTS) {
-    socket.on(event, (payload: unknown) => handleRealtimeEvent(event, payload));
+    socket.on(event, (payload: unknown) => realtimeHandler?.(event, payload));
   }
 }
 

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { api } from '../lib/api';
-import { emitSocket, onConnect } from '../lib/socket';
+import { emitSocket, onConnect, setRealtimeHandler } from '../lib/socket';
 import type {
   ConversationDto,
   DmMessageDto,
@@ -309,6 +309,10 @@ function bumpUnread(contextKey: string, createdAt: string): void {
     }));
   }
 }
+
+// Register the realtime dispatcher (socket.ts deliberately does not import
+// this module — the data→socket direction is the only import path).
+setRealtimeHandler(handleRealtimeEvent);
 
 // ---------------------------------------------------------------------------
 // Realtime dispatch (wired from lib/socket.ts)
