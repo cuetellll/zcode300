@@ -44,16 +44,22 @@ export function AppShell() {
   const activeChannel = activeServer?.channels?.find((c) => c.id === activeChannelId);
   const showVoiceStage = voiceMode !== 'idle' && voiceChannel && activeChannelId === voiceChannelId;
 
+  // TEMP DEBUG: ?stage=N bisects the /app tree to locate the update loop.
+  const stage = Number(new URLSearchParams(window.location.search).get('stage') ?? '99');
+  if (stage === 0) {
+    return <div style={{ color: '#e7e9f0', padding: 24 }}>gate-ok — authed, AppShell skeleton reached</div>;
+  }
+
   return (
     <div className="flex h-full w-full overflow-hidden">
-      <ServerRail />
+      {stage >= 1 && <ServerRail />}
       <div className="flex min-w-0 flex-1">
         <div className="flex w-60 shrink-0 flex-col" style={{ background: 'var(--bg-sidebar)' }}>
-          {mainView === 'server' ? <ChannelSidebar /> : null}
+          {mainView === 'server' && stage >= 2 ? <ChannelSidebar /> : null}
         </div>
 
         <main className="flex min-w-0 flex-1 flex-col" style={{ background: 'var(--bg-chat)' }}>
-          {mainView === 'server' && activeChannel ? (
+          {stage >= 5 && mainView === 'server' && activeChannel ? (
             showVoiceStage && voiceChannel ? (
               <>
                 <VoiceStage channel={voiceChannel} />
@@ -65,18 +71,22 @@ export function AppShell() {
               <ChatView channel={activeChannel} />
             )
           ) : null}
-          {mainView === 'dms' && <DmsView />}
-          {mainView === 'friends' && <FriendsView />}
+          {stage >= 5 && mainView === 'dms' && <DmsView />}
+          {stage >= 5 && mainView === 'friends' && <FriendsView />}
         </main>
 
-        {mainView === 'server' && memberSidebarOpen && <MemberSidebar />}
+        {mainView === 'server' && memberSidebarOpen && stage >= 3 && <MemberSidebar />}
       </div>
 
-      <SettingsModal />
-      <ServerModals />
-      <CreateChannelModal />
-      <NotificationsPanel />
-      <UserProfileModal />
+      {stage >= 4 && (
+        <>
+          <SettingsModal />
+          <ServerModals />
+          <CreateChannelModal />
+          <NotificationsPanel />
+          <UserProfileModal />
+        </>
+      )}
 
       <div className="pointer-events-none fixed bottom-4 start-1/2 z-[60] flex -translate-x-1/2 flex-col items-center gap-2 rtl:translate-x-1/2">
         {toasts.map((toast) => (
