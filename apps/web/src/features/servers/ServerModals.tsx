@@ -211,8 +211,10 @@ function ServerSettingsModal({
 }) {
   const { t } = useI18n();
   const pushToast = useUiStore((s) => s.pushToast);
-  const members = useDataStore((s) => s.membersByServer[serverId] ?? []);
-  const roles = useDataStore((s) => s.rolesByServer[serverId] ?? []);
+  const membersMap = useDataStore((s) => s.membersByServer);
+  const members = membersMap[serverId] ?? [];
+  const rolesMap = useDataStore((s) => s.rolesByServer);
+  const roles = rolesMap[serverId] ?? [];
   const [serverName, setServerName] = useState('');
   const [roleName, setRoleName] = useState('');
   const [roleColor, setRoleColor] = useState('#99AAB5');
