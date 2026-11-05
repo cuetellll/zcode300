@@ -1,0 +1,21 @@
+{
+  "name": "mahyar-gap",
+  "version": "4.0.0",
+  "private": true,
+  "description": "Mahyar Gap — private group communication space (chat, voice, video, screen share, live radio) built for a small circle of friends",
+  "workspaces": [
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev:api": "npm run dev -w @mahyar/api",
+    "dev:web": "npm run dev -w @mahyar/web",
+    "build": "npm run build -w @mahyar/api && npm run build -w @mahyar/web",
+    "lint": "npm run lint -w @mahyar/api && npm run lint -w @mahyar/web",
+    "test": "npm run test -w @mahyar/api && npm run test -w @mahyar/web",
+    "db:generate": "npm run db:generate -w @mahyar/api",
+    "db:deploy": "npm run db:deploy -w @mahyar/api"
+  }
+}

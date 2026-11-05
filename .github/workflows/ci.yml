@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: mahyar_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:test@localhost:5432/mahyar_ci
+      JWT_ACCESS_SECRET: ci-secret-ci-secret-ci-secret-123456
+      LIVEKIT_URL: wss://ci.invalid
+      LIVEKIT_API_KEY: APIKeyCI
+      LIVEKIT_API_SECRET: ci-secret-ci
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Prisma generate
+        run: npm run db:generate
+      - name: Typecheck (lint)
+        run: npm run lint
+      - name: Build (api + web)
+        run: npm run build
+      - name: Unit tests
+        run: npm test
+      - name: Apply migrations to a fresh database
+        run: npm run db:deploy
+      - name: Python worker syntax check
+        run: python3 -m compileall -q workers/radio
