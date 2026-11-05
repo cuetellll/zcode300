@@ -56,7 +56,8 @@ export function CreateChannelModal() {
   const memberUsers: PublicUser[] = members.filter((m) => m.user_id !== server.owner_id).map((m) => m.user);
 
   async function submit() {
-    if (!name.trim() || busy) return;
+    if (!server || !name.trim() || busy) return;
+    const targetServer = server;
     setBusy(true);
     try {
       if (editId) {
@@ -69,7 +70,7 @@ export function CreateChannelModal() {
           },
         });
       } else {
-        await api(`/api/servers/${server.id}/channels`, {
+        await api(`/api/servers/${targetServer.id}/channels`, {
           method: 'POST',
           body: {
             name: name.trim(),
@@ -79,7 +80,7 @@ export function CreateChannelModal() {
           },
         });
       }
-      await loadServerDetail(server.id);
+      await loadServerDetail(targetServer.id);
       closeModal();
     } catch (error) {
       pushToast((error as Error).message, 'error');
@@ -89,11 +90,12 @@ export function CreateChannelModal() {
   }
 
   async function removeChannel() {
-    if (!editId) return;
+    if (!server || !editId) return;
     if (!window.confirm(t('deleteChannel') + '?')) return;
+    const targetServer = server;
     try {
       await api(`/api/channels/${editId}`, { method: 'DELETE' });
-      await loadServerDetail(server.id);
+      await loadServerDetail(targetServer.id);
       closeModal();
     } catch (error) {
       pushToast((error as Error).message, 'error');

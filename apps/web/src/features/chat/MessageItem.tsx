@@ -163,7 +163,7 @@ export const MessageItem = memo(function MessageItem({
             autoFocus
             onChange={(e) => setEditText(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.isComposing) void saveEdit();
+              if (e.key === 'Enter' && !e.nativeEvent.isComposing) void saveEdit();
               if (e.key === 'Escape') setEditing(false);
             }}
           />

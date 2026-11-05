@@ -143,6 +143,7 @@ function DmThread({ conversationId }: { conversationId: string }) {
   const me = useAuthStore((s) => s.user);
   const conversations = useDataStore((s) => s.conversations);
   const messages = useDataStore((s) => s.dmMessages[conversationId]);
+  const hasMore = useDataStore((s) => s.dmHasMore[conversationId] ?? false);
   const typingUsers = useDataStore((s) => s.dmTyping[conversationId] ?? []);
   const loadOlder = useDataStore((s) => s.loadOlderDmMessages);
   const markRead = useDataStore((s) => s.markChannelRead);
@@ -212,6 +213,13 @@ function DmThread({ conversationId }: { conversationId: string }) {
           markRead(conversationId);
         }}
       >
+        {hasMore && (
+          <div className="mb-2 text-center">
+            <button type="button" className="btn btn-secondary text-xs" onClick={() => void loadOlder(conversationId)}>
+              {t('loadOlder')}
+            </button>
+          </div>
+        )}
         {(messages?.length ?? 0) === 0 ? (
           <EmptyState text={t('emptyChannel')} icon={<MessageSquare size={28} />} />
         ) : (

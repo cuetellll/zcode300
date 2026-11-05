@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { api } from '../lib/api';
-import { emitSocket, onConnect, registerServerIdsSnapshot } from '../lib/socket';
+import { emitSocket, onConnect } from '../lib/socket';
 import type {
   ConversationDto,
   DmMessageDto,
@@ -71,63 +71,9 @@ interface DataState {
 }
 
 export const useDataStore = create<DataState>((set, get) => {
-  function applyVoiceUpdate(payload: {
-    channel_id: string;
-    session?: VoiceSessionDto;
-    user_id?: string;
-    removed?: boolean;
-  }): void {
-    set((state) => {
-      const others = state.voiceSessions.filter(
-        (s) => !(s.channel_id === payload.channel_id && (payload.removed ? s.user_id === payload.user_id : s.user_id === payload.session?.user_id)),
-      );
-      const next = payload.removed || !payload.session ? others : [...others, payload.session];
-      return { voiceSessions: next };
-    });
-  }
-
-  function handleTyping(kind: 'typing' | 'dmTyping', key: string, userId: string): void {
-    set((state) => {
-      const map = kind === 'typing' ? state.typing : state.dmTyping;
-      const current = new Set(map[key] ?? []);
-      current.add(userId);
-      return kind === 'typing'
-        ? { typing: { ...state.typing, [key]: [...current] } }
-        : { dmTyping: { ...state.dmTyping, [key]: [...current] } };
-    });
-    setTimeout(() => {
-      set((state) => {
-        const map = kind === 'typing' ? state.typing : state.dmTyping;
-        const current = (map[key] ?? []).filter((id) => id !== userId);
-        return kind === 'typing'
-          ? { typing: { ...state.typing, [key]: current } }
-          : { dmTyping: { ...state.dmTyping, [key]: current } };
-      });
-    }, 6000);
-  }
-
-  function bumpUnread(contextKey: string, createdAt: string): void {
-    const state = get();
-    const lastRead = readLastReadMap()[contextKey];
-    const isContextKey = contextKey === state.activeChannelId || contextKey === state.activeConversationId;
-    if (!isContextKey && (!lastRead || new Date(createdAt) > new Date(lastRead))) {
-      set((s) => ({ unreadBadges: { ...s.unreadBadges, [contextKey]: (s.unreadBadges[contextKey] ?? 0) + 1 } }));
-    }
-  }
-
-  async function joinCurrentRooms(): Promise<void> {
-    const { servers, activeServerId, activeChannelId } = get();
-    for (const server of servers) {
-      emitSocket('server:join', server.id);
-    }
-    void activeServerId;
-    if (activeChannelId) emitSocket('channel:join', activeChannelId);
-  }
-
-  registerServerIdsSnapshot(() => Object.fromEntries(get().servers.map((s) => [s.id, true as const])));
   onConnect(() => {
     set({ connected: true });
-    void joinCurrentRooms();
+    joinCurrentRooms();
   });
 
   return {
@@ -304,6 +250,67 @@ export const useDataStore = create<DataState>((set, get) => {
 });
 
 // ---------------------------------------------------------------------------
+// Module-level helpers used by both the store and the realtime dispatcher
+// ---------------------------------------------------------------------------
+
+function joinCurrentRooms(): void {
+  const { servers, activeChannelId } = useDataStore.getState();
+  for (const server of servers) {
+    emitSocket('server:join', server.id);
+  }
+  if (activeChannelId) emitSocket('channel:join', activeChannelId);
+}
+
+function applyVoiceUpdate(payload: {
+  channel_id: string;
+  session?: VoiceSessionDto;
+  user_id?: string;
+  removed?: boolean;
+}): void {
+  useDataStore.setState((state) => {
+    const others = state.voiceSessions.filter(
+      (s) =>
+        !(
+          s.channel_id === payload.channel_id &&
+          (payload.removed ? s.user_id === payload.user_id : s.user_id === payload.session?.user_id)
+        ),
+    );
+    const next = payload.removed || !payload.session ? others : [...others, payload.session];
+    return { voiceSessions: next };
+  });
+}
+
+function handleTyping(kind: 'typing' | 'dmTyping', key: string, userId: string): void {
+  useDataStore.setState((state) => {
+    const map = kind === 'typing' ? state.typing : state.dmTyping;
+    const current = [...new Set([...(map[key] ?? []), userId])];
+    return kind === 'typing'
+      ? { typing: { ...state.typing, [key]: current } }
+      : { dmTyping: { ...state.dmTyping, [key]: current } };
+  });
+  setTimeout(() => {
+    useDataStore.setState((state) => {
+      const map = kind === 'typing' ? state.typing : state.dmTyping;
+      const current = (map[key] ?? []).filter((id) => id !== userId);
+      return kind === 'typing'
+        ? { typing: { ...state.typing, [key]: current } }
+        : { dmTyping: { ...state.dmTyping, [key]: current } };
+    });
+  }, 6000);
+}
+
+function bumpUnread(contextKey: string, createdAt: string): void {
+  const state = useDataStore.getState();
+  const lastRead = readLastReadMap()[contextKey];
+  const isContextKey = contextKey === state.activeChannelId || contextKey === state.activeConversationId;
+  if (!isContextKey && (!lastRead || new Date(createdAt) > new Date(lastRead))) {
+    useDataStore.setState((s) => ({
+      unreadBadges: { ...s.unreadBadges, [contextKey]: (s.unreadBadges[contextKey] ?? 0) + 1 },
+    }));
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Realtime dispatch (wired from lib/socket.ts)
 // ---------------------------------------------------------------------------
 
@@ -342,10 +349,6 @@ export function handleRealtimeEvent(event: string, payload: unknown): void {
     }
     case 'direct_message:new': {
       const message = data as unknown as DmMessageDto;
-      useDataStore.setState((state) => {
-        const known = state.conversations.some((c) => c.conversation_id === message.conversation_id);
-        return known ? state : state; // conversations list refresh handled below
-      });
       upsertDm(message);
       bumpUnread(message.conversation_id, message.created_at);
       void store.refreshConversations();

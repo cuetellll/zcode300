@@ -145,4 +145,5 @@ export const fa = {
   owner: 'مالک',
 } as const;
 
-export type FaDict = typeof fa;
+/** Widened shape so the English dictionary can hold its own strings. */
+export type FaDict = Record<keyof typeof fa, string>;

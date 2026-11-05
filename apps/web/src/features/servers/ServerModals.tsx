@@ -15,7 +15,6 @@ export function ServerModals() {
   const pushToast = useUiStore((s) => s.pushToast);
   const servers = useDataStore((s) => s.servers);
   const selectServer = useDataStore((s) => s.selectServer);
-  const membersByServer = useDataStore((s) => s.membersByServer);
   const activeServerId = useDataStore((s) => s.activeServerId);
   const activeServer = servers.find((s) => s.id === activeServerId);
 

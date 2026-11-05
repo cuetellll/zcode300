@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { Check, MessageCircle, UserPlus, Users, X } from 'lucide-react';
 import { useI18n } from '../../i18n';
 import { api } from '../../lib/api';
-import { useAuthStore } from '../../stores/auth';
 import { useDataStore } from '../../stores/data';
 import { useUiStore } from '../../stores/ui';
 import { Avatar, EmptyState, Spinner } from '../../components/ui';
@@ -12,7 +11,6 @@ type Tab = 'online' | 'all' | 'pending' | 'add';
 
 export function FriendsView() {
   const { t } = useI18n();
-  const me = useAuthStore((s) => s.user);
   const friends = useDataStore((s) => s.friends);
   const presence = useDataStore((s) => s.presence);
   const refreshFriends = useDataStore((s) => s.refreshFriends);
