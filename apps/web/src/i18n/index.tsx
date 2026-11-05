@@ -1,9 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { fa } from './fa';
+import { fa, type FaDict } from './fa';
 import { en } from './en';
 
 export type Lang = 'fa' | 'en';
-export type Dict = typeof fa;
+export type Dict = FaDict;
 
 const dictionaries: Record<Lang, Dict> = {
   fa,
