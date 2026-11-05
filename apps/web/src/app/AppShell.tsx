@@ -1,4 +1,5 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import { Plus } from 'lucide-react';
 import { useI18n } from '../i18n';
 import { useDataStore } from '../stores/data';
 import { useUiStore } from '../stores/ui';
@@ -25,6 +26,7 @@ export function AppShell() {
   const memberSidebarOpen = useUiStore((s) => s.memberSidebarOpen);
   const toasts = useUiStore((s) => s.toasts);
   const pushToast = useUiStore((s) => s.pushToast);
+  const openModal = useUiStore((s) => s.openModal);
   const activeChannelId = useDataStore((s) => s.activeChannelId);
   const servers = useDataStore((s) => s.servers);
   const activeServerId = useDataStore((s) => s.activeServerId);
@@ -32,10 +34,14 @@ export function AppShell() {
   const voiceChannelId = useVoiceStore((s) => s.channelId);
 
   const activeServer = servers.find((server) => server.id === activeServerId);
+  const wasConnected = useRef(false);
 
   useEffect(() => {
+    // Only toast on a real connected → disconnected transition, never on the
+    // initial mount (the socket has not connected yet at that point).
     return onConnectionChange((connected) => {
-      if (!connected) pushToast(t('connectionLost'), 'error');
+      if (!connected && wasConnected.current) pushToast(t('connectionLost'), 'error');
+      wasConnected.current = connected;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -53,7 +59,22 @@ export function AppShell() {
         </div>
 
         <main className="flex min-w-0 flex-1 flex-col" style={{ background: 'var(--bg-chat)' }}>
-          {mainView === 'server' && activeChannel ? (
+          {mainView === 'server' && !activeServer ? (
+            <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
+              <div
+                className="flex h-16 w-16 items-center justify-center rounded-2xl text-white"
+                style={{ background: 'var(--brand-gradient)' }}
+              >
+                <Plus size={28} />
+              </div>
+              <h2 className="text-lg font-bold">{t('createServer')}</h2>
+              <p className="max-w-xs text-sm text-[var(--text-secondary)]">{t('tagline')}</p>
+              <button type="button" className="btn btn-primary" onClick={() => openModal('createServer')}>
+                <Plus size={16} /> {t('createServer')}
+              </button>
+            </div>
+          ) : null}
+          {mainView === 'server' && activeServer && activeChannel ? (
             showVoiceStage && voiceChannel ? (
               <>
                 <VoiceStage channel={voiceChannel} />
