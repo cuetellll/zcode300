@@ -4,6 +4,7 @@ import { I18nProvider } from '../i18n';
 import { useAuthStore } from '../stores/auth';
 import { AuthPage, bootstrapAuth } from '../features/auth/AuthPage';
 import { AppShell } from './AppShell';
+import { ErrorBoundary } from './ErrorBoundary';
 import { Spinner } from '../components/ui';
 import { connectSocket, disconnectSocket } from '../lib/socket';
 import { useDataStore } from '../stores/data';
@@ -76,13 +77,15 @@ export function App() {
 
   return (
     <I18nProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<AuthPage />} />
-          <Route path="/app" element={<WorkspaceGate />} />
-          <Route path="*" element={<Navigate to="/app" replace />} />
-        </Routes>
-      </BrowserRouter>
+      <ErrorBoundary>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<AuthPage />} />
+            <Route path="/app" element={<WorkspaceGate />} />
+            <Route path="*" element={<Navigate to="/app" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </ErrorBoundary>
     </I18nProvider>
   );
 }
