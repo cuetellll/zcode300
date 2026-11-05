@@ -65,7 +65,7 @@ export async function deleteMessageAttachments(attachmentRefs: string[]): Promis
 // ---------------------------------------------------------------------------
 
 messagesRouter.get(
-  '/channels/:channelId',
+  '/channels/:channelId/messages',
   requireAuth,
   asyncHandler(async (req, res) => {
     const userId = getUserId(req);
@@ -97,7 +97,7 @@ messagesRouter.get(
 );
 
 messagesRouter.post(
-  '/channels/:channelId',
+  '/channels/:channelId/messages',
   requireAuth,
   asyncHandler(async (req, res) => {
     const userId = getUserId(req);
