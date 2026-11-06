@@ -86,9 +86,10 @@ export function isSocketConnected(): boolean {
   return connected;
 }
 
-// TEMP DEBUG: observable socket state
+// TEMP DEBUG: observable socket state + direct emit for diagnosis
 if (typeof window !== 'undefined') {
   (window as unknown as { __mgSocket: { connected: () => boolean } }).__mgSocket = { connected: () => connected };
+  (window as unknown as { __mgEmit: typeof emitSocket }).__mgEmit = emitSocket;
 }
 
 const REALTIME_EVENTS = [
