@@ -35,6 +35,8 @@ interface UiState {
   theme: 'dark' | 'light';
   mainView: MainView;
   memberSidebarOpen: boolean;
+  /** Mobile-only channel drawer. */
+  channelDrawerOpen: boolean;
   toasts: ToastEntry[];
   openModal: (modal: ModalName, arg?: string) => void;
   closeModal: () => void;
@@ -42,6 +44,8 @@ interface UiState {
   setTheme: (theme: 'dark' | 'light') => void;
   setMainView: (view: MainView) => void;
   toggleMemberSidebar: () => void;
+  setMemberSidebarOpen: (open: boolean) => void;
+  setChannelDrawerOpen: (open: boolean) => void;
   pushToast: (message: string, tone?: 'info' | 'error') => void;
   dismissToast: (id: number) => void;
 }
@@ -57,7 +61,9 @@ export const useUiStore = create<UiState>((set, get) => ({
   replyTarget: null,
   theme: (localStorage.getItem('mahyar_gap_theme') as 'dark' | 'light') ?? 'dark',
   mainView: 'server',
-  memberSidebarOpen: true,
+  // On phones the member list is a drawer, not a permanent column.
+  memberSidebarOpen: typeof window !== 'undefined' ? window.innerWidth >= 1024 : true,
+  channelDrawerOpen: false,
   toasts: [],
   openModal: (modal, arg) => set({ modal, modalArg: arg ?? null }),
   closeModal: () => set({ modal: null, modalArg: null }),
@@ -66,8 +72,10 @@ export const useUiStore = create<UiState>((set, get) => ({
     applyTheme(theme);
     set({ theme });
   },
-  setMainView: (view) => set({ mainView: view }),
+  setMainView: (view) => set({ mainView: view, channelDrawerOpen: false }),
   toggleMemberSidebar: () => set({ memberSidebarOpen: !get().memberSidebarOpen }),
+  setMemberSidebarOpen: (open) => set({ memberSidebarOpen: open }),
+  setChannelDrawerOpen: (open) => set({ channelDrawerOpen: open }),
   pushToast: (message, tone = 'info') => {
     const id = Date.now() + Math.random();
     set((state) => ({ toasts: [...state.toasts, { id, message, tone }] }));

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Hash, Lock, Paperclip, Pin, Send, Volume2, X, Bell } from 'lucide-react';
+import { Bell, Hash, Lock, Menu, Paperclip, Pin, Search, Send, Users, Volume2, X } from 'lucide-react';
 import { useI18n } from '../../i18n';
 import { api, uploadFile } from '../../lib/api';
 import { emitSocket } from '../../lib/socket';
@@ -222,6 +222,9 @@ export function ChatView({ channel }: ChatViewProps) {
   const notifications = useDataStore((s) => s.notifications);
   const openModal = useUiStore((s) => s.openModal);
   const pushToast = useUiStore((s) => s.pushToast);
+  const toggleMemberSidebar = useUiStore((s) => s.toggleMemberSidebar);
+  const memberSidebarOpen = useUiStore((s) => s.memberSidebarOpen);
+  const setChannelDrawerOpen = useUiStore((s) => s.setChannelDrawerOpen);
   // Stable-map selectors; index in the body (new refs inside selectors loop zustand v5).
   const typingMap = useDataStore((s) => s.typing);
   const typingUsers = typingMap[channel.id] ?? [];
@@ -287,11 +290,31 @@ export function ChatView({ channel }: ChatViewProps) {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <header className="flex h-12 shrink-0 items-center gap-2 px-4" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-        {channel.type === 'VOICE' ? <Volume2 size={17} /> : channel.is_private ? <Lock size={16} /> : <Hash size={16} />}
-        <h1 className="text-sm font-bold">{channel.name}</h1>
+      <header className="flex h-12 shrink-0 items-center gap-2 px-4" style={{ boxShadow: '0 1px 0 var(--border-subtle)' }}>
+        <button
+          type="button"
+          className="icon-btn md:hidden"
+          onClick={() => setChannelDrawerOpen(true)}
+          aria-label={t('channels')}
+          title={t('channels')}
+        >
+          <Menu size={18} />
+        </button>
+        {channel.type === 'VOICE' ? <Volume2 size={20} /> : channel.is_private ? <Lock size={18} /> : <Hash size={20} />}
+        <h1 className="truncate text-[15px] font-bold">{channel.name}</h1>
         {channel.topic && <span className="hidden truncate text-xs text-[var(--text-muted)] md:inline">— {channel.topic}</span>}
         <div className="flex-1" />
+        <button
+          type="button"
+          className="icon-btn hidden md:flex"
+          onClick={toggleMemberSidebar}
+          aria-pressed={memberSidebarOpen}
+          aria-label={memberSidebarOpen ? t('hideMembers') : t('showMembers')}
+          title={memberSidebarOpen ? t('hideMembers') : t('showMembers')}
+          data-tip={memberSidebarOpen ? t('hideMembers') : t('showMembers')}
+        >
+          <Users size={18} />
+        </button>
         <button
           type="button"
           className="btn btn-ghost relative p-1.5"
@@ -319,14 +342,16 @@ export function ChatView({ channel }: ChatViewProps) {
         </button>
         <button
           type="button"
-          className="btn btn-ghost p-1.5"
+          className={`icon-btn ${searchOpen ? 'is-active' : ''}`}
           title={t('search')}
+          aria-label={t('search')}
+          aria-expanded={searchOpen}
           onClick={() => {
             setSearchOpen(!searchOpen);
             setSearch('');
           }}
         >
-          <span className="text-xs">🔍</span>
+          <Search size={17} />
         </button>
       </header>
 

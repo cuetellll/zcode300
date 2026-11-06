@@ -133,11 +133,11 @@ export const MessageItem = memo(function MessageItem({
   const reactionEntries = Object.entries(message.reactions ?? {}).filter(([, users]) => users.length > 0);
 
   return (
-    <div className="group relative px-4 py-0.5 hover:bg-[var(--bg-elevated)]" style={{ marginTop: showHeader ? 12 : 0 }}>
+    <div className="group relative px-4 py-0.5 transition-colors hover:bg-[var(--bg-elevated)]" style={{ marginTop: showHeader ? 14 : 0 }}>
       {showHeader && (
         <div className="mb-0.5 flex items-center gap-2">
-          <Avatar user={message.author} size={36} />
-          <span className="text-sm font-semibold">{message.author.display_name}</span>
+          <Avatar user={message.author} size={40} />
+          <span className="text-base font-semibold">{message.author.display_name}</span>
           <span className="text-[11px] text-[var(--text-muted)]">{formatTime(message.created_at)}</span>
           {message.pinned && (
             <span className="text-[10px] text-[var(--brand-accent)]" title={t('pinnedMessages')}>
@@ -147,7 +147,7 @@ export const MessageItem = memo(function MessageItem({
         </div>
       )}
       {replyTarget && (
-        <div className="mb-1 ms-12 flex items-center gap-1 text-xs text-[var(--text-muted)]">
+        <div className="mb-1 ms-[52px] flex items-center gap-1 text-xs text-[var(--text-muted)]">
           <CornerUpLeft size={11} />
           <span className="font-medium text-[var(--text-secondary)]">{replyTarget.author.display_name}</span>
           <span className="truncate">{replyTarget.content.slice(0, 80)}</span>
@@ -155,7 +155,7 @@ export const MessageItem = memo(function MessageItem({
       )}
 
       {editing ? (
-        <div className="ms-12 flex gap-2">
+        <div className="ms-[52px] flex gap-2">
           <input
             ref={editRef}
             className="input"
@@ -172,11 +172,15 @@ export const MessageItem = memo(function MessageItem({
           </button>
         </div>
       ) : (
-        message.content && <p className="whitespace-pre-wrap break-words ms-12 text-sm" dir="auto">{renderContent(message.content)}</p>
+        message.content && (
+          <p className="ms-[52px] whitespace-pre-wrap break-words text-[15px] leading-[1.375rem]" dir="auto">
+            {renderContent(message.content)}
+          </p>
+        )
       )}
 
       {message.attachments.length > 0 && (
-        <div className="ms-12 mt-1 flex flex-wrap gap-2">
+        <div className="ms-[52px] mt-1 flex flex-wrap gap-2">
           {message.attachments.map((attachment) =>
             attachment.content_type.startsWith('image/') ? (
               <a key={attachment.id} href={attachment.url} target="_blank" rel="noreferrer">
@@ -207,7 +211,7 @@ export const MessageItem = memo(function MessageItem({
       )}
 
       {reactionEntries.length > 0 && (
-        <div className="ms-12 mt-1 flex flex-wrap gap-1">
+        <div className="ms-[52px] mt-1 flex flex-wrap gap-1">
           {reactionEntries.map(([emoji, users]) => (
             <button
               key={emoji}
