@@ -33,6 +33,13 @@ interface Channel {
   analyser: AnalyserNode;
   gain: GainNode;
   sink: GainNode | null;
+  /**
+   * Chrome quirk: a REMOTE WebRTC track consumed only through
+   * createMediaStreamSource can stay silent unless the track also plays
+   * through an element. This muted keep-alive element keeps the media
+   * flowing; the audible output comes from the graph, so it stays muted.
+   */
+  keepAlive: HTMLAudioElement;
   /** Web Audio's getFloatTimeDomainData requires a non-shared buffer. */
   buffer: Float32Array<ArrayBuffer>;
 }
@@ -112,6 +119,13 @@ export class VoiceAudioEngine {
 
     try {
       const stream = new MediaStream([options.track]);
+      const keepAlive = document.createElement('audio');
+      keepAlive.muted = true;
+      keepAlive.autoplay = true;
+      keepAlive.dataset.mgAudioKeepAlive = '1';
+      keepAlive.srcObject = stream;
+      document.body.appendChild(keepAlive);
+      void keepAlive.play().catch(() => undefined);
       const source = context.createMediaStreamSource(stream);
       const analyser = context.createAnalyser();
       analyser.fftSize = 512;
@@ -129,6 +143,7 @@ export class VoiceAudioEngine {
         analyser,
         gain,
         sink: null,
+        keepAlive,
         buffer: new Float32Array(analyser.fftSize),
       });
     } catch {
@@ -147,6 +162,13 @@ export class VoiceAudioEngine {
     this.removeChannel(options.key);
     try {
       const stream = new MediaStream([options.track]);
+      const keepAlive = document.createElement('audio');
+      keepAlive.muted = true;
+      keepAlive.autoplay = true;
+      keepAlive.dataset.mgAudioKeepAlive = '1';
+      keepAlive.srcObject = stream;
+      document.body.appendChild(keepAlive);
+      void keepAlive.play().catch(() => undefined);
       const source = context.createMediaStreamSource(stream);
       const analyser = context.createAnalyser();
       analyser.fftSize = 512;
@@ -192,6 +214,7 @@ export class VoiceAudioEngine {
       // already disconnected
     }
     channel.sink?.disconnect();
+    channel.keepAlive.remove();
     this.channels.delete(key);
     this.lastAudible.delete(key);
   }

@@ -34,51 +34,47 @@ const STATIONS = {
 export default {
   async fetch(request, env) {
     try {
-      return await handle(request, env);
-    } catch (error) {
-      return new Response('relay error: ' + (error && error.message ? error.message : String(error)), {
-        status: 500,
-        headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+      const url = new URL(request.url);
+
+      if (!url.pathname.startsWith('/stream/')) {
+        return new Response('Mahyar Radio relay is running.\n', {
+          status: 200,
+          headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+        });
+      }
+
+      const stationId = url.pathname.slice('/stream/'.length).replace(/[^a-z0-9]/g, '');
+      const target = STATIONS[stationId];
+      if (!target) {
+        return new Response('unknown station\n', { status: 404 });
+      }
+
+      const accessKey = env && env.RADIO_RELAY_KEY ? String(env.RADIO_RELAY_KEY).trim() : '';
+      if (accessKey && url.searchParams.get('key') !== accessKey) {
+        return new Response('forbidden\n', { status: 403 });
+      }
+
+      const upstream = await fetch(target, {
+        headers: {
+          'User-Agent': 'MahyarRadio/1.0',
+          'Icy-MetaData': '1',
+          Accept: '*/*',
+        },
       });
+
+      return new Response(upstream.body, {
+        status: upstream.status,
+        headers: {
+          'Content-Type': upstream.headers.get('content-type') ?? 'audio/mpeg',
+          'Cache-Control': 'no-store',
+          'X-Relay-Station': stationId,
+        },
+      });
+    } catch (error) {
+      return new Response(
+        'relay error: ' + (error && error.message ? error.message : String(error)) + '\n',
+        { status: 500, headers: { 'Content-Type': 'text/plain; charset=utf-8' } },
+      );
     }
   },
 };
-
-async function handle(request, env) {
-    const url = new URL(request.url);
-
-    if (!url.pathname.startsWith('/stream/')) {
-      return new Response('Mahyar Radio relay is running.\n', {
-        status: 200,
-        headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-      });
-    }
-
-    const stationId = url.pathname.slice('/stream/'.length).replace(/[^a-z0-9]/g, '');
-    const target = STATIONS[stationId];
-    if (!target) {
-      return new Response('unknown station\n', { status: 404 });
-    }
-
-    const accessKey = (env.RADIO_RELAY_KEY ?? '').trim();
-    if (accessKey && url.searchParams.get('key') !== accessKey) {
-      return new Response('forbidden\n', { status: 403 });
-    }
-
-    const upstream = await fetch(target, {
-      headers: {
-        'User-Agent': 'MahyarRadio/1.0',
-        'Icy-MetaData': '1',
-        Accept: '*/*',
-      },
-    });
-
-    return new Response(upstream.body, {
-      status: upstream.status,
-      headers: {
-        'Content-Type': upstream.headers.get('content-type') ?? 'audio/mpeg',
-        'Cache-Control': 'no-store',
-        'X-Relay-Station': stationId,
-      },
-    });
-}

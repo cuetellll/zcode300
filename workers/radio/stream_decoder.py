@@ -168,6 +168,12 @@ class StreamDecoder:
                 import protocol
 
                 protocol.log(f"[{self.label}] stream stalled (>12s without frames) — restarting ffmpeg")
+                protocol.send_message({
+                    "type": "error",
+                    "message": f"Station stream stalled — reconnecting…",
+                    "fatal": False,
+                    "station_id": self.label,
+                })
                 with contextlib.suppress(ProcessLookupError):
                     self._proc.kill()
                 return  # _run notices the exit and reconnects
