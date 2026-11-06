@@ -180,6 +180,12 @@ export class VoiceAudioEngine {
       analyser.connect(gain);
       gain.connect(sink);
       sink.connect(context.destination);
+      const keepAlive = document.createElement('audio');
+      keepAlive.muted = true;
+      keepAlive.autoplay = true;
+      keepAlive.srcObject = stream;
+      document.body.appendChild(keepAlive);
+      void keepAlive.play().catch(() => undefined);
       this.channels.set(options.key, {
         key: options.key,
         identity: options.identity,
@@ -188,6 +194,7 @@ export class VoiceAudioEngine {
         analyser,
         gain,
         sink,
+        keepAlive,
         buffer: new Float32Array(analyser.fftSize),
       });
     } catch {
