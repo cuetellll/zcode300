@@ -88,6 +88,16 @@ interface VoiceState {
 }
 
 const MAX_RECONNECT_ATTEMPTS = 5;
+
+/** Attached remote-audio elements (identity -> element) for autoplay recovery. */
+const attachedAudio = new Map<string, HTMLAudioElement>();
+let audioPlaybackBlocked = false;
+function setAudioBlocked(blocked: boolean): void {
+  if (audioPlaybackBlocked !== blocked) {
+    audioPlaybackBlocked = blocked;
+    useVoiceStore.setState({ audioBlocked: blocked });
+  }
+}
 const SPEAKING_THRESHOLD = 0.012;
 
 const initialPrefs: VoicePrefs = loadVoicePrefs();
@@ -110,6 +120,18 @@ onConnect(() => {
 /** Direct room access for video attachment in components. */
 export function getLiveRoom(): Room | null {
   return room;
+}
+
+// First user gesture after a blocked autoplay recovers playback automatically.
+if (typeof document !== 'undefined') {
+  document.addEventListener(
+    'pointerdown',
+    () => {
+      const store = useVoiceStore.getState();
+      if (audioPlaybackBlocked) store.resumeAudio();
+    },
+    { passive: true },
+  );
 }
 
 function describeMediaError(error: unknown): string {
@@ -568,6 +590,35 @@ export const useVoiceStore = create<VoiceState>((set, get) => {
           set({ lastError: 'screen-permission' });
         }
       }
+    },
+
+    resumeAudio() {
+      let allPlaying = true;
+      for (const [, element] of attachedAudio) {
+        if (!element.paused) continue;
+        void element
+          .play()
+          .then(() => undefined)
+          .catch(() => {
+            allPlaying = false;
+          });
+      }
+      // Re-apply volumes in case a suspended WebAudio graph swallowed them.
+      const state = get();
+      for (const participant of room ? Object.values(room.remoteParticipants) : []) {
+        for (const publication of participant.audioTrackPublications) {
+          const track = publication.audioTrack as (RemoteTrack & { setVolume?: (v: number) => void }) | undefined;
+          if (track && typeof track.setVolume === 'function') {
+            const isRadio = participant.identity.startsWith('mahyar-radio-');
+            track.setVolume(isRadio ? (state.deafened ? 0 : state.radioVolume) : state.deafened ? 0 : 1);
+          }
+        }
+      }
+      setTimeout(() => {
+        const stillBlocked = [...attachedAudio.values()].some((el) => el.paused);
+        setAudioBlocked(stillBlocked);
+      }, 400);
+      void allPlaying;
     },
 
     setRadioVolume(volume) {

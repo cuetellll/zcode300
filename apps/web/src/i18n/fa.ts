@@ -148,6 +148,8 @@ export const fa = {
   retry: 'تلاش مجدد',
   radioDisabled: 'رادیو غیرفعال است',
   volume: 'بلندی صدا',
+  enableAudio: 'فعال‌سازی صدا',
+  audioBlockedHint: 'مرورگر پخش خودکار را مسدود کرده — برای شنیدن کلیک کنید',
   // notifications + errors
   notifications: 'اعلان‌ها',
   markAllRead: 'خواندن همه',

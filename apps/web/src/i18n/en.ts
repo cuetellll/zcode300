@@ -150,6 +150,8 @@ export const en: FaDict = {
   retry: 'Retry',
   radioDisabled: 'Radio is disabled',
   volume: 'Volume',
+  enableAudio: 'Enable audio',
+  audioBlockedHint: 'The browser blocked autoplay — click to hear the radio',
   // notifications + errors
   notifications: 'Notifications',
   markAllRead: 'Mark all read',
