@@ -127,21 +127,23 @@ export function getLiveRoom(): Room | null {
 
 // TEMP DEBUG: LiveKit subscription state for diagnosis.
 if (typeof window !== 'undefined') {
-  (window as unknown as { __mgRoomInfo: () => unknown }).__mgRoomInfo = () => {
-    if (!room) return { room: 'none' };
-    return {
-      state: room.state,
-      name: room.name,
-      remotes: Object.values(room.remoteParticipants).map((p) => ({
-        identity: p.identity,
-        audio: Array.from(p.audioTrackPublications.values()).map((t) => ({
-          sid: t.trackSid.slice(-6),
-          subscribed: t.isSubscribed,
-          muted: t.isMuted,
-          hasTrack: Boolean(t.audioTrack),
-        })),
-      })),
-    };
+  (window as unknown as { __mgRoomInfo: () => unknown }).__mgRoomInfo = (): unknown => {
+    const currentRoom = room;
+    if (!currentRoom) return { room: 'none' };
+    const remotes: Array<{ identity: string; audio: Array<{ sid: string; subscribed: boolean; muted: boolean; hasTrack: boolean }> }> = [];
+    for (const participant of currentRoom.remoteParticipants.values()) {
+      const audio: Array<{ sid: string; subscribed: boolean; muted: boolean; hasTrack: boolean }> = [];
+      for (const publication of participant.audioTrackPublications.values()) {
+        audio.push({
+          sid: publication.trackSid.slice(-6),
+          subscribed: publication.isSubscribed,
+          muted: publication.isMuted,
+          hasTrack: Boolean(publication.audioTrack),
+        });
+      }
+      remotes.push({ identity: participant.identity, audio });
+    }
+    return { state: currentRoom.state, name: currentRoom.name, remotes };
   };
 }
 
