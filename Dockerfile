@@ -36,9 +36,10 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 RUN apt-get update \
- && apt-get install -y --no-install-recommends ffmpeg ca-certificates openssl libstdc++6 \
+ && apt-get install -y --no-install-recommends ffmpeg ca-certificates openssl libstdc++6 python3 \
  && rm -rf /var/lib/apt/lists/* \
- && ffmpeg -version | head -1
+ && ffmpeg -version | head -1 \
+ && python3 --version
 
 COPY --from=build /app/package.json ./package.json
 COPY --from=build /app/node_modules ./node_modules
