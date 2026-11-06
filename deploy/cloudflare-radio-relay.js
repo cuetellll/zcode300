@@ -33,6 +33,18 @@ const STATIONS = {
 
 export default {
   async fetch(request, env) {
+    try {
+      return await handle(request, env);
+    } catch (error) {
+      return new Response('relay error: ' + (error && error.message ? error.message : String(error)), {
+        status: 500,
+        headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+      });
+    }
+  },
+};
+
+async function handle(request, env) {
     const url = new URL(request.url);
 
     if (!url.pathname.startsWith('/stream/')) {
@@ -69,5 +81,4 @@ export default {
         'X-Relay-Station': stationId,
       },
     });
-  },
-};
+}
