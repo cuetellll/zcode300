@@ -47,7 +47,10 @@ export function livekitConfig(): LiveKitConfig {
   if (env.isProduction && parsed.protocol === 'ws:') {
     throw new HttpError(503, 'LIVEKIT_URL must use wss in production', 'LIVEKIT_URL_INSECURE');
   }
-  const clientUrl = parsed.protocol === 'https:' ? `wss://${parsed.host}` : `ws://${parsed.host}`;
+  const clientUrl =
+    parsed.protocol === 'https:' || parsed.protocol === 'wss:'
+      ? `wss://${parsed.host}`
+      : `ws://${parsed.host}`;
   return { url: clientUrl, apiKey, apiSecret };
 }
 
