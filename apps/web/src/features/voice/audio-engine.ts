@@ -276,13 +276,19 @@ export const voiceAudioEngine = new VoiceAudioEngine();
 
 // TEMP DEBUG: live audio-graph state for autoplay/subscription diagnosis.
 if (typeof window !== 'undefined') {
-  (window as unknown as { __mgAudioInfo: () => unknown }).__mgAudioInfo = () => ({
-    contextState: this.context?.state ?? 'no-context',
-    channels: [...this.channels.values()].map((c) => ({
-      key: c.key,
-      role: c.role,
-      gain: c.gain.gain.value,
-    })),
-  });
+  (window as unknown as { __mgAudioInfo: () => unknown }).__mgAudioInfo = () => {
+    const engine = voiceAudioEngine as unknown as {
+      context: { state?: string } | null;
+      channels: Map<string, { key: string; role: string; gain: { gain: { value: number } } }>;
+    };
+    return {
+      contextState: engine.context?.state ?? 'no-context',
+      channels: [...engine.channels.values()].map((c) => ({
+        key: c.key,
+        role: c.role,
+        gain: c.gain?.gain?.value,
+      })),
+    };
+  };
 }
 export type { TrackRole };

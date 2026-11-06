@@ -63,6 +63,9 @@ interface VoiceState {
   streamVolume: number;
   radioVolume: number;
   radioMuted: boolean;
+  /** True when a remote audio element could not autoplay (browser policy). */
+  audioBlocked: boolean;
+  resumeAudio: () => void;
 
   speaking: Record<string, boolean>;
   watching: string | null;
@@ -467,6 +470,7 @@ export const useVoiceStore = create<VoiceState>((set, get) => {
     mutedUsers: initialPrefs.muted,
     streamVolume: initialPrefs.streamVolume,
     radioVolume: loadRadioVolume(),
+    audioBlocked: false,
     radioMuted: loadRadioMuted(),
 
     speaking: {},
