@@ -86,6 +86,11 @@ export function isSocketConnected(): boolean {
   return connected;
 }
 
+// TEMP DEBUG: observable socket state
+if (typeof window !== 'undefined') {
+  (window as unknown as { __mgSocket: { connected: () => boolean } }).__mgSocket = { connected: () => connected };
+}
+
 const REALTIME_EVENTS = [
   'presence:update',
   'message:new',

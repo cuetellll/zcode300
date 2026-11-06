@@ -10,7 +10,7 @@ import {
   type RoomOptions,
 } from 'livekit-client';
 import { api } from '../lib/api';
-import { emitSocket } from '../lib/socket';
+import { emitSocket, onConnect } from '../lib/socket';
 import type { VoiceTokenResponse } from '../lib/types';
 
 export interface VoiceParticipantView {
@@ -53,6 +53,16 @@ interface VoiceState {
 }
 
 const MAX_RECONNECT_ATTEMPTS = 5;
+
+// When the Socket.IO connection drops and comes back, the server's ghost
+// cleanup has already removed our VoiceSession row — re-assert it so voice
+// presence and the radio room keep working mid-call.
+onConnect(() => {
+  const state = useVoiceStore.getState();
+  if (state.mode === 'voice' && state.channelId) {
+    emitSocket('voice:join', { channelId: state.channelId });
+  }
+});
 
 /** Direct room access for video attachment in components. */
 export function getLiveRoom(): Room | null {

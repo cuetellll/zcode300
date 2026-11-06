@@ -70,6 +70,7 @@ export function attachRealtime(io: SocketServer): void {
 
   io.on('connection', (socket: Socket) => {
     const userId = socket.data.userId as string;
+    logger.info('socket connected', { userId, socketId: socket.id });
     socket.join(`user:${userId}`);
     const sockets = presence.get(userId) ?? new Set<string>();
     const wasOnline = sockets.size > 0;
@@ -77,7 +78,8 @@ export function attachRealtime(io: SocketServer): void {
     presence.set(userId, sockets);
     if (!wasOnline) broadcastPresence();
 
-    socket.on('disconnect', async () => {
+    socket.on('disconnect', async (reason: string) => {
+      logger.info('socket disconnected', { userId, reason });
       const remaining = presence.get(userId);
       if (remaining) {
         remaining.delete(socket.id);
