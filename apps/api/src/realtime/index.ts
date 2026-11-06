@@ -8,6 +8,7 @@ import { serializeVoiceSession } from '../lib/serialize';
 import { logger } from '../lib/logger';
 import { emitToChannel, emitToServer as emitServer } from './socket-bus';
 import { radioManager } from '../modules/radio/radio.context';
+import { serverRoomService } from '../modules/voice/voice.routes';
 
 /**
  * Socket.IO gateway. Every event is authenticated and authorized against the
@@ -29,6 +30,26 @@ function socketIo(): SocketServer | null {
 
 // Populated in attachRealtime() below (module-local to avoid another export).
 let globalSocket: SocketServer | null = null;
+
+
+/**
+ * LiveKit is the source of truth for voice presence: is this user currently a
+ * participant in the room? Falls back to the VoiceSession row when the admin
+ * API is unavailable.
+ */
+async function isUserInLiveKitRoom(roomId: string, userId: string): Promise<boolean> {
+  try {
+    const roomService = serverRoomService();
+    const participants = await roomService.listParticipants(roomId);
+    return participants.some((p) => p.identity === userId);
+  } catch {
+    if (!roomId) return false;
+    const row = await prisma.voiceSession
+      .findUnique({ where: { channelId_userId: { channelId: roomId, userId } } })
+      .catch(() => null);
+    return Boolean(row);
+  }
+}
 
 export function attachRealtime(io: SocketServer): void {
   globalSocket = io;
@@ -86,23 +107,32 @@ export function attachRealtime(io: SocketServer): void {
         if (remaining.size === 0) {
           presence.delete(userId);
           broadcastPresence();
-          // Reap this user's voice presence rows (ghost cleanup).
-          const sessions = await prisma.voiceSession.findMany({ where: { userId }, include: { channel: true } });
-          if (sessions.length > 0) {
-            await prisma.voiceSession.deleteMany({ where: { userId } });
-            for (const session of sessions) {
-              emitToChannel(session.channelId, 'voice:updated', {
-                channel_id: session.channelId,
-                user_id: userId,
-                removed: true,
-              });
-              emitServer(session.channel.serverId, 'voice:updated', {
-                channel_id: session.channelId,
-                user_id: userId,
-                removed: true,
-              });
+          // Ghost cleanup with a grace period: the socket often reconnects
+          // (background-tab throttling) while the LiveKit connection stays
+          // alive. Re-check against LiveKit before deleting anything.
+          const cleanupTimer = setTimeout(async () => {
+            try {
+              const sessions = await prisma.voiceSession.findMany({ where: { userId }, include: { channel: true } });
+              for (const session of sessions) {
+                const stillThere = await isUserInLiveKitRoom(session.channelId, userId).catch(() => true);
+                if (stillThere) continue;
+                await prisma.voiceSession.deleteMany({ where: { userId, channelId: session.channelId } });
+                emitToChannel(session.channelId, 'voice:updated', {
+                  channel_id: session.channelId,
+                  user_id: userId,
+                  removed: true,
+                });
+                emitServer(session.channel.serverId, 'voice:updated', {
+                  channel_id: session.channelId,
+                  user_id: userId,
+                  removed: true,
+                });
+              }
+            } catch (error) {
+              logger.warn('voice ghost cleanup failed', { userId, error: String(error) });
             }
-          }
+          }, 15_000);
+          cleanupTimer.unref();
         }
       }
     });
@@ -272,10 +302,7 @@ export function attachRealtime(io: SocketServer): void {
           ack?.({ ok: false, error: 'Join the voice channel first', code: 'NOT_IN_VOICE' });
           return;
         }
-        const voiceSession = await prisma.voiceSession.findUnique({
-          where: { channelId_userId: { channelId, userId } },
-        });
-        if (!voiceSession) {
+        if (!(await isUserInLiveKitRoom(channelId, userId))) {
           ack?.({ ok: false, error: 'Join the voice channel first', code: 'NOT_IN_VOICE' });
           return;
         }
@@ -291,10 +318,7 @@ export function attachRealtime(io: SocketServer): void {
 
     socket.on('radio:stop', async (payload: { channelId?: string }, ack?: (result: unknown) => void) => {
       const channelId = String(payload?.channelId ?? '');
-      const voiceSession = await prisma.voiceSession.findUnique({
-        where: { channelId_userId: { channelId, userId } },
-      });
-      if (!voiceSession) {
+      if (!(await isUserInLiveKitRoom(channelId, userId))) {
         ack?.({ ok: false, error: 'Join the voice channel first', code: 'NOT_IN_VOICE' });
         return;
       }
