@@ -86,13 +86,13 @@ class RadioPublisher:
             raise RuntimeError("publisher not connected")
         self._source = rtc.AudioSource(SAMPLE_RATE, NUM_CHANNELS)
         self._track = rtc.LocalAudioTrack.create_audio_track("Mahyar Radio", self._source)
+        # Default publish options (mono opus + RED): the python SDK's
+        # TrackPublishOptions proto has no stereo field, and RED is not a
+        # problem for clients — the earlier silence was RTP starvation,
+        # handled by the silence pump below.
         await self.room.local_participant.publish_track(
             self._track,
-            rtc.TrackPublishOptions(
-                source=rtc.TrackSource.SOURCE_MICROPHONE,
-                # stereo implies red=False — plain opus survives every client.
-                stereo=True,
-            ),
+            rtc.TrackPublishOptions(source=rtc.TrackSource.SOURCE_MICROPHONE),
         )
         log("radio audio track published")
         silence = bytes(SAMPLES_PER_FRAME * NUM_CHANNELS * 2)
