@@ -184,13 +184,19 @@ export function AuthPage() {
 
 /** Boot: silently refresh the session cookie, then decide the route. */
 export async function bootstrapAuth(): Promise<boolean> {
+  (window as unknown as { __mgBoot: string[] }).__mgBoot = (window as unknown as { __mgBoot: string[] }).__mgBoot ?? [];
+  const boot = (window as unknown as { __mgBoot: string[] }).__mgBoot;
+  boot.push('bootstrap:start');
   const token = await refreshAccessToken();
+  boot.push(`refresh:${token ? 'ok' : 'null'}`);
   if (!token) return false;
   try {
     const data = await api<{ user: PublicUser }>('/api/auth/me');
+    boot.push('me:ok');
     useAuthStore.getState().setSession(data.user, token);
     return true;
-  } catch {
+  } catch (error) {
+    boot.push(`me:fail ${(error as Error).message}`);
     useAuthStore.getState().clear();
     return false;
   }

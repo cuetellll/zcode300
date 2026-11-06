@@ -6,6 +6,7 @@ import { prisma } from '../../lib/prisma';
 import { asyncHandler, HttpError, unauthorized } from '../../lib/errors';
 import { authLimiter } from '../../middleware/rate-limit';
 import { requireAuth, sameOriginOrTrusted, getUserId } from '../../middleware/auth';
+import { logger } from '../../lib/logger';
 import { validateAvatarDataUrl } from '../../lib/avatar';
 import {
   REFRESH_COOKIE_NAME,
@@ -111,7 +112,9 @@ authRouter.post(
       throw new HttpError(403, 'Cross-site refresh rejected');
     }
     const token = (req.cookies as Record<string, string | undefined>)?.[REFRESH_COOKIE_NAME];
+    logger.info('auth refresh attempt', { hadCookie: Boolean(token) });
     const next = await rotateSession(token, requestContext(req));
+    logger.info('auth refresh result', { ok: Boolean(next) });
     if (!next) {
       res.cookie(REFRESH_COOKIE_NAME, '', clearingRefreshCookie());
       throw unauthorized('Session expired');
