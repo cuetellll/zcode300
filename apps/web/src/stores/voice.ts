@@ -122,6 +122,26 @@ export function getLiveRoom(): Room | null {
   return room;
 }
 
+// TEMP DEBUG: LiveKit subscription state for diagnosis.
+if (typeof window !== 'undefined') {
+  (window as unknown as { __mgRoomInfo: () => unknown }).__mgRoomInfo = () => {
+    if (!room) return { room: 'none' };
+    return {
+      state: room.state,
+      name: room.name,
+      remotes: Object.values(room.remoteParticipants).map((p) => ({
+        identity: p.identity,
+        audio: Array.from(p.audioTrackPublications.values()).map((t) => ({
+          sid: t.trackSid.slice(-6),
+          subscribed: t.isSubscribed,
+          muted: t.isMuted,
+          hasTrack: Boolean(t.audioTrack),
+        })),
+      })),
+    };
+  };
+}
+
 // First user gesture after a blocked autoplay recovers playback automatically.
 if (typeof document !== 'undefined') {
   document.addEventListener(
