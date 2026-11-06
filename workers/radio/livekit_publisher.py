@@ -88,14 +88,20 @@ class RadioPublisher:
             ),
         )
         log("radio audio track published")
+        silence = bytes(SAMPLES_PER_FRAME * NUM_CHANNELS * 2)
         while True:
             decoder = get_decoder()
             if decoder is None:
                 await asyncio.sleep(0.05)
                 continue
-            frame_bytes = await decoder.next_frame()
+            try:
+                # A short timeout keeps RTP flowing even while the decoder is
+                # reconnecting — LiveKit removes tracks that stop sending.
+                frame_bytes = await asyncio.wait_for(decoder.next_frame(), timeout=0.3)
+            except asyncio.TimeoutError:
+                frame_bytes = silence
             if not frame_bytes:
-                continue  # decoder stopped / unblocked
+                frame_bytes = silence
             frame = rtc.AudioFrame(
                 data=frame_bytes,
                 sample_rate=SAMPLE_RATE,

@@ -13,6 +13,7 @@ Design goals (per project requirements):
 import asyncio
 import contextlib
 import json
+import time
 
 SAMPLE_RATE = 48_000
 NUM_CHANNELS = 2
@@ -98,10 +99,13 @@ class StreamDecoder:
         self._running = False
         self._task: "asyncio.Task | None" = None
         self._proc: "asyncio.subprocess.Process | None" = None
+        self._last_frame_ts = time.monotonic()
+        self._watchdog: "asyncio.Task | None" = None
 
     async def start(self) -> None:
         self._running = True
         self._task = asyncio.create_task(self._run())
+        self._watchdog = asyncio.create_task(self._stall_watchdog())
         codec = await probe_codec(self.url)
         if codec:
             import protocol
@@ -123,6 +127,11 @@ class StreamDecoder:
     async def stop(self) -> None:
         self._running = False
         self.healthy_event.clear()
+        if self._watchdog:
+            self._watchdog.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await self._watchdog
+            self._watchdog = None
         if self._proc and self._proc.returncode is None:
             with contextlib.suppress(ProcessLookupError):
                 self._proc.kill()
@@ -142,6 +151,27 @@ class StreamDecoder:
         except asyncio.TimeoutError:
             return False
 
+
+    async def _stall_watchdog(self) -> None:
+        """Restart FFmpeg when the stream stalls without exiting.
+
+        RadioX sometimes stops sending data without closing the connection:
+        FFmpeg stays alive but produces no frames, so the reconnect-on-exit
+        path never triggers. A >12s frame gap is treated as a stall — the
+        process is killed and the normal reconnect-with-backoff path runs.
+        """
+        while self._running:
+            await asyncio.sleep(4)
+            if not self._running or self._proc is None:
+                continue
+            if self.healthy_event.is_set() and (time.monotonic() - self._last_frame_ts) > 12:
+                import protocol
+
+                protocol.log(f"[{self.label}] stream stalled (>12s without frames) — restarting ffmpeg")
+                with contextlib.suppress(ProcessLookupError):
+                    self._proc.kill()
+                return  # _run notices the exit and reconnects
+
     # -- internals ----------------------------------------------------------
 
     async def _run(self) -> None:
@@ -155,6 +185,7 @@ class StreamDecoder:
                     stderr=asyncio.subprocess.PIPE,
                 )
                 self._proc = proc
+                self._last_frame_ts = time.monotonic()
                 stderr_task = asyncio.create_task(self._drain_stderr(proc))
                 buffer = b""
                 produced_any = False
@@ -170,6 +201,7 @@ class StreamDecoder:
                             # Await the bounded queue: backpressure reaches FFmpeg
                             # through the OS pipe instead of growing memory.
                             await self.queue.put(frame)
+                            self._last_frame_ts = time.monotonic()
                             produced_any = True
                             frames_since_reset += 1
                             if not self.healthy_event.is_set():
