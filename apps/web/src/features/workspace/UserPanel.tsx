@@ -8,27 +8,39 @@ import { useUiStore } from '../../stores/ui';
 import { useVoiceStore } from '../../stores/voice';
 import { Avatar } from '../../components/ui';
 
+/**
+ * Bottom-left user panel (Discord's "self" bar): avatar, name, mic / deafen /
+ * settings. Voice connection status lives directly above it in
+ * VoiceConnectionPanel, so leaving a call is always one click away.
+ */
 export function UserPanel() {
   const { t } = useI18n();
   const me = useAuthStore((s) => s.user);
   const clear = useAuthStore((s) => s.clear);
   const openModal = useUiStore((s) => s.openModal);
   const pushToast = useUiStore((s) => s.pushToast);
-  const voice = useVoiceStore();
+  const micEnabled = useVoiceStore((s) => s.micEnabled);
+  const deafened = useVoiceStore((s) => s.deafened);
+  const mode = useVoiceStore((s) => s.mode);
+  const lastError = useVoiceStore((s) => s.lastError);
+  const toggleMic = useVoiceStore((s) => s.toggleMic);
+  const toggleDeafen = useVoiceStore((s) => s.toggleDeafen);
+  const clearError = useVoiceStore((s) => s.clearError);
+  const leave = useVoiceStore((s) => s.leave);
 
   useEffect(() => {
-    if (!voice.lastError) return;
+    if (!lastError) return;
     pushToast(
-      voice.lastError === 'mic-permission'
+      lastError === 'mic-permission'
         ? t('micPermissionDenied')
-        : voice.lastError === 'camera-permission'
+        : lastError === 'camera-permission'
           ? t('cameraPermissionDenied')
-          : voice.lastError,
+          : lastError,
       'error',
     );
-    voice.clearError();
+    clearError();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [voice.lastError]);
+  }, [lastError]);
 
   if (!me) return null;
 
@@ -38,66 +50,76 @@ export function UserPanel() {
     } catch {
       // cookie may already be gone
     }
-    voice.leave().catch(() => undefined);
+    void leave().catch(() => undefined);
     disconnectSocket();
     clear();
     window.location.assign('/app');
   }
 
-  const inVoice = voice.mode !== 'idle';
+  const inVoice = mode !== 'idle';
 
   return (
     <div
-      className="flex h-14 items-center gap-2 px-2"
-      style={{ background: 'var(--bg-rail)', borderTop: '1px solid var(--border-subtle)' }}
+      className="flex h-[52px] shrink-0 items-center gap-1 px-1.5"
+      style={{ background: 'var(--bg-rail)' }}
     >
-      <Avatar user={me} size={32} showStatus />
-      <div className="min-w-0 flex-1 leading-tight">
-        <div className="truncate text-xs font-semibold">{me.display_name}</div>
-        <div className="truncate text-[10px] text-[var(--text-muted)]">
-          {inVoice ? t('voiceConnected') : `@${me.username}`}
-        </div>
-      </div>
-      <div className="flex items-center">
-        {inVoice && (
-          <>
-            <button
-              type="button"
-              className="btn btn-ghost p-1.5"
-              title={voice.micEnabled ? t('mute') : t('unmute')}
-              onClick={() => void voice.toggleMic()}
-              style={{ color: voice.micEnabled ? undefined : 'var(--danger)' }}
-              aria-pressed={!voice.micEnabled}
-            >
-              {voice.micEnabled ? <Mic size={17} /> : <MicOff size={17} />}
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost p-1.5"
-              title={voice.deafened ? t('undeafen') : t('deafen')}
-              onClick={() => void voice.toggleDeafen()}
-              style={{ color: voice.deafened ? 'var(--danger)' : undefined }}
-              aria-pressed={voice.deafened}
-            >
-              {voice.deafened ? <HeadphoneOff size={17} /> : <Headphones size={17} />}
-            </button>
-          </>
-        )}
+      <button
+        type="button"
+        onClick={() => openModal('userProfile', me.id)}
+        className="flex min-w-0 flex-1 items-center gap-2 rounded px-1 py-1 text-start transition-colors hover:bg-[var(--bg-elevated)]"
+        title={`${me.display_name} — @${me.username}`}
+      >
+        <Avatar user={me} size={32} showStatus />
+        <span className="min-w-0 flex-1 leading-tight">
+          <span className="block truncate text-[13px] font-semibold">{me.display_name}</span>
+          <span className="block truncate text-[11px]" style={{ color: 'var(--text-muted)' }}>
+            {inVoice ? t('inVoice') : `@${me.username}`}
+          </span>
+        </span>
+      </button>
+
+      <div className="flex items-center gap-0.5">
         <button
           type="button"
-          className="btn btn-ghost p-1.5"
-          title={t('settings')}
+          className={`icon-btn h-8 w-8 ${inVoice && !micEnabled ? 'is-danger' : ''}`}
+          onClick={() => void toggleMic()}
+          disabled={!inVoice}
+          title={micEnabled ? t('mute') : t('unmute')}
+          aria-label={micEnabled ? t('mute') : t('unmute')}
+          aria-pressed={!micEnabled}
+          data-tip={micEnabled ? t('mute') : t('unmute')}
+        >
+          {micEnabled ? <Mic size={17} /> : <MicOff size={17} />}
+        </button>
+        <button
+          type="button"
+          className={`icon-btn h-8 w-8 ${deafened ? 'is-danger' : ''}`}
+          onClick={() => void toggleDeafen()}
+          disabled={!inVoice}
+          title={deafened ? t('undeafen') : t('deafen')}
+          aria-label={deafened ? t('undeafen') : t('deafen')}
+          aria-pressed={deafened}
+          data-tip={deafened ? t('undeafen') : t('deafen')}
+        >
+          {deafened ? <HeadphoneOff size={17} /> : <Headphones size={17} />}
+        </button>
+        <button
+          type="button"
+          className="icon-btn h-8 w-8"
           onClick={() => openModal('settings')}
+          title={t('settings')}
           aria-label={t('settings')}
+          data-tip={t('settings')}
         >
           <Settings size={17} />
         </button>
         <button
           type="button"
-          className="btn btn-ghost p-1.5"
-          title={t('logout')}
+          className="icon-btn h-8 w-8"
           onClick={() => void logout()}
+          title={t('logout')}
           aria-label={t('logout')}
+          data-tip={t('logout')}
         >
           <LogOut size={17} />
         </button>
