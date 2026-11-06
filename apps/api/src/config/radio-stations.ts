@@ -54,6 +54,22 @@ export function publicStation(station: RadioStation): PublicRadioStation {
   return { id: station.id, title: station.title, description: station.description };
 }
 
+/**
+ * Where the radio worker should fetch the station from.
+ *
+ * The stream is hosted in IRAN; US/EU datacenter routes to it are unreliable.
+ * When RADIO_RELAY_BASE is configured (a Cloudflare Worker relay with a solid
+ * Iran route), the worker fetches through it — same allowlist, same key
+ * protection, same "no client-supplied URLs" property.
+ */
+export function stationSourceUrl(station: RadioStation): string {
+  const base = (process.env.RADIO_RELAY_BASE ?? '').trim().replace(/\/+$/, '');
+  if (!base) return station.streamUrl;
+  const key = (process.env.RADIO_RELAY_KEY ?? '').trim();
+  const separator = base.includes('?') ? '&' : '?';
+  return `${base}/${station.id}${key ? `${separator}key=${encodeURIComponent(key)}` : ''}`;
+}
+
 export const RADIO_BOT_NAME = 'Mahyar Radio';
 export function radioBotIdentity(channelId: string): string {
   return `mahyar-radio-${channelId}`;

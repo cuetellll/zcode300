@@ -5,6 +5,7 @@ import {
   RADIO_BOT_NAME,
   findRadioStation,
   radioBotIdentity,
+  stationSourceUrl,
   type RadioStation,
 } from '../config/radio-stations';
 import { HttpError } from '../lib/errors';
@@ -124,7 +125,7 @@ export class RadioWorkerManager {
         type: 'switch',
         station_id: station.id,
         station_title: station.title,
-        station_url: station.streamUrl,
+        station_url: stationSourceUrl(station),
       });
       this.publish(existing);
       return this.snapshot(existing);
@@ -246,7 +247,7 @@ export class RadioWorkerManager {
       name: RADIO_BOT_NAME,
       station_id: station.id,
       station_title: station.title,
-      station_url: station.streamUrl,
+      station_url: stationSourceUrl(station),
     });
     logger.info('radio worker started', { channelId, stationId: station.id });
     return session;
