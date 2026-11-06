@@ -72,6 +72,16 @@ class RadioPublisher:
         `get_decoder` is a callable returning the current StreamDecoder, so a
         station switch swaps the feed without republishing the track.
         """
+        try:
+            await self._publish_and_pump(get_decoder)
+        except Exception as error:  # noqa: BLE001 — never die silently
+            import traceback
+
+            log("publish_loop crashed: " + repr(error))
+            log(traceback.format_exc())
+            send_message({"type": "error", "message": f"publish failed: {error}", "fatal": True})
+
+    async def _publish_and_pump(self, get_decoder):
         if not self.room:
             raise RuntimeError("publisher not connected")
         self._source = rtc.AudioSource(SAMPLE_RATE, NUM_CHANNELS)
@@ -80,11 +90,8 @@ class RadioPublisher:
             self._track,
             rtc.TrackPublishOptions(
                 source=rtc.TrackSource.SOURCE_MICROPHONE,
-                # Opus RED (RFC 2198) breaks audio subscription on some
-                # clients; publish plain stereo opus instead.
-                red=False,
+                # stereo implies red=False — plain opus survives every client.
                 stereo=True,
-                dtx=False,
             ),
         )
         log("radio audio track published")
