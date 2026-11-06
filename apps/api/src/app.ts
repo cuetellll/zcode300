@@ -104,10 +104,23 @@ export function buildApp(): Express {
   app.use('/api/notifications', notificationsRouter);
 
   // -- web static (production SPA) — MUST be registered before the 404 handler
+  // Vite emits content-hashed files under /assets: cache those forever, but
+  // never cache index.html (new deploys must be picked up immediately).
   const webDist = path.resolve(__dirname, '../../web/dist');
   if (fs.existsSync(webDist)) {
-    app.use(express.static(webDist, { maxAge: '1h', index: false }));
+    app.use(
+      express.static(webDist, {
+        index: false,
+        maxAge: '1y',
+        immutable: true,
+        setHeaders: (res, filePath) => {
+          const contentHashed = /-[A-Za-z0-9_-]{8,}\.(?:js|css|woff2?)$/.test(filePath);
+          if (!contentHashed) res.setHeader('Cache-Control', 'no-cache');
+        },
+      }),
+    );
     app.get(/^\/(?!api\/|auth\/).*/, (_req: Request, res: Response) => {
+      res.setHeader('Cache-Control', 'no-cache');
       res.sendFile(path.join(webDist, 'index.html'));
     });
   }

@@ -2,8 +2,11 @@ node_modules/
 dist/
 build/
 *.log
+*.tsbuildinfo
 .env
-.env.local
+.env.*
+!.env.example
 .DS_Store
 coverage/
 .vite/
+*.rar

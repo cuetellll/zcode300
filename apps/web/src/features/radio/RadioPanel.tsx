@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CircleStop, Radio, Users, Volume2 } from 'lucide-react';
+import { CircleStop, Radio, Users, Volume2, VolumeX } from 'lucide-react';
 import { useI18n } from '../../i18n';
 import { api } from '../../lib/api';
 import { emitSocket } from '../../lib/socket';
@@ -10,8 +10,11 @@ import type { RadioStateDto } from '../../lib/types';
 
 /**
  * Mahyar Radio panel — shared per-voice-room playback.
- * Play/stop are room-wide (server relays to every listener); the volume
- * slider is LOCAL to this client only.
+ *
+ * Play/stop are room-wide (the server relays to every listener and the radio
+ * bot publishes into the LiveKit room). Volume + mute are LOCAL: the radio
+ * track has its own GainNode (0–200%), independent from every user's voice,
+ * and both values persist across reloads.
  */
 export function RadioPanel({ channelId }: { channelId: string }) {
   const { t } = useI18n();
@@ -20,9 +23,10 @@ export function RadioPanel({ channelId }: { channelId: string }) {
   const radioStates = useDataStore((s) => s.radioStates);
   const voiceMode = useVoiceStore((s) => s.mode);
   const voiceChannelId = useVoiceStore((s) => s.channelId);
-  const deafened = useVoiceStore((s) => s.deafened);
   const radioVolume = useVoiceStore((s) => s.radioVolume);
+  const radioMuted = useVoiceStore((s) => s.radioMuted);
   const setRadioVolume = useVoiceStore((s) => s.setRadioVolume);
+  const toggleRadioMute = useVoiceStore((s) => s.toggleRadioMute);
   const pushToast = useUiStore((s) => s.pushToast);
   const [busy, setBusy] = useState(false);
 
@@ -32,6 +36,7 @@ export function RadioPanel({ channelId }: { channelId: string }) {
   const isStarting = state?.status === 'starting' || state?.status === 'stopping';
   const isError = state?.status === 'error';
   const disabled = !inVoice || !radioEnabled || busy;
+  const effectiveVolume = radioMuted ? 0 : radioVolume;
 
   useEffect(() => {
     // Refresh snapshot when entering the room (socket push handles updates).
@@ -52,9 +57,7 @@ export function RadioPanel({ channelId }: { channelId: string }) {
         pushToast(
           response.code === 'NOT_IN_VOICE'
             ? t('joinVoiceFirst')
-            : response.code === 'RADIO_CAPACITY_FULL'
-              ? response.error ?? t('radioError')
-              : response.error ?? t('radioError'),
+            : response.error ?? t('radioError'),
           'error',
         );
       }
@@ -70,104 +73,114 @@ export function RadioPanel({ channelId }: { channelId: string }) {
   }
 
   return (
-    <section className="p-4" aria-label={t('mahyarRadio')}>
-      <header className="mb-3 flex items-center gap-2">
+    <section className="px-3 py-2" aria-label={t('mahyarRadio')}>
+      <header className="mb-2 flex items-center gap-2">
         <span
-          className="flex h-8 w-8 items-center justify-center rounded-lg text-white"
-          style={{ background: 'var(--brand-gradient)' }}
+          className="flex h-6 w-6 items-center justify-center rounded text-white"
+          style={{ background: 'var(--brand-primary)' }}
         >
-          <Radio size={16} />
+          <Radio size={13} />
         </span>
-        <h2 className="text-sm font-bold">{t('mahyarRadio')}</h2>
+        <h2 className="text-[13px] font-bold">{t('mahyarRadio')}</h2>
         {isLive && <span className="live-badge">● LIVE</span>}
+        {isLive && (
+          <span className="flex items-center gap-1 text-[11px]" style={{ color: 'var(--text-muted)' }} title={t('listeners')}>
+            <Users size={12} /> {state?.listeners}
+          </span>
+        )}
         <div className="flex-1" />
         {isLive && (
-          <span className="flex items-center gap-1 text-xs text-[var(--text-secondary)]" title={t('listeners')}>
-            <Users size={13} /> {state?.listeners}
-          </span>
+          <button type="button" className="btn btn-sm btn-danger" onClick={stop} title={t('radioStop')}>
+            <CircleStop size={13} /> {t('radioStop')}
+          </button>
         )}
       </header>
 
-      {!inVoice ? (
-        <p className="rounded-[var(--radius)] px-3 py-3 text-xs" style={{ background: 'var(--bg-input)', color: 'var(--text-muted)' }}>
-          🎧 {t('joinVoiceFirst')}
-        </p>
-      ) : !radioEnabled ? (
-        <p className="rounded-[var(--radius)] px-3 py-3 text-xs" style={{ background: 'var(--bg-input)', color: 'var(--text-muted)' }}>
-          {t('radioDisabled')}
-        </p>
-      ) : (
-        <>
-          <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-            {stations.map((station) => {
-              const active = isLive && state?.station_id === station.id;
-              return (
-                <button
-                  key={station.id}
-                  type="button"
-                  onClick={() => void play(station.id)}
-                  disabled={disabled}
-                  className="card flex flex-col items-start gap-0.5 p-3 text-start transition-all hover:border-[var(--brand-primary)] disabled:opacity-50"
-                  style={
-                    active
-                      ? { borderColor: 'var(--brand-primary)', boxShadow: '0 0 14px var(--brand-glow)' }
-                      : undefined
-                  }
-                >
-                  <span className="flex w-full items-center gap-1 text-sm font-semibold">
-                    <span className="min-w-0 flex-1 truncate">{station.title}</span>
-                    {active && isLive && <span className="h-2 w-2 shrink-0 animate-pulse rounded-full" style={{ background: 'var(--danger)' }} />}
-                  </span>
-                  <span className="w-full truncate text-[11px] text-[var(--text-muted)]">{station.description}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="mt-3 flex flex-wrap items-center gap-3 rounded-[var(--radius)] px-3 py-2" style={{ background: 'var(--bg-input)' }}>
-            <div className="min-w-0 flex-1 text-xs">
-              {isError ? (
-                <span style={{ color: 'var(--danger)' }}>
-                  ⚠ {state?.error ?? t('radioError')}{' '}
-                  {state?.station_id && (
-                    <button type="button" className="underline" onClick={() => void play(state.station_id!)}>
-                      {t('retry')}
-                    </button>
-                  )}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="grid min-w-0 flex-1 grid-cols-2 gap-1.5 sm:grid-cols-4">
+          {stations.map((station) => {
+            const active = isLive && state?.station_id === station.id;
+            return (
+              <button
+                key={station.id}
+                type="button"
+                onClick={() => void play(station.id)}
+                disabled={disabled || !radioEnabled}
+                className="flex min-w-0 flex-col items-start rounded px-2 py-1.5 text-start transition-colors disabled:opacity-50"
+                style={{
+                  background: active ? 'rgba(88,101,242,0.18)' : 'var(--bg-rail)',
+                  border: `1px solid ${active ? 'var(--brand-primary)' : 'transparent'}`,
+                  color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
+                }}
+                title={station.title}
+              >
+                <span className="flex w-full items-center gap-1 text-[13px] font-semibold">
+                  <span className="min-w-0 flex-1 truncate">{station.title}</span>
+                  {active && <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full" style={{ background: 'var(--danger)' }} />}
                 </span>
-              ) : isStarting ? (
-                <span className="text-[var(--status-idle)]">◌ {t('radioStarting')}</span>
-              ) : isLive ? (
-                <span>
-                  <strong style={{ color: 'var(--brand-accent)' }}>LIVE</strong> · {state?.station_title}
+                <span className="w-full truncate text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                  {station.description}
                 </span>
-              ) : (
-                <span className="text-[var(--text-muted)]">{t('radioHint')}</span>
-              )}
-            </div>
+              </button>
+            );
+          })}
+        </div>
 
-            <label className="flex items-center gap-2 text-xs text-[var(--text-secondary)]" title={t('volume')}>
-              <Volume2 size={14} />
-              <input
-                type="range"
-                min={0}
-                max={1}
-                step={0.05}
-                value={deafened ? 0 : radioVolume}
-                onChange={(e) => setRadioVolume(Number(e.target.value))}
-                className="w-28"
-                aria-label={t('volume')}
-              />
-            </label>
+        {/* local volume — independent from voice + persisted */}
+        <div className="flex items-center gap-1.5" title={t('radioVolume')}>
+          <button
+            type="button"
+            className={`icon-btn h-7 w-7 ${radioMuted ? 'is-danger' : ''}`}
+            onClick={toggleRadioMute}
+            aria-pressed={radioMuted}
+            aria-label={radioMuted ? t('unmuteRadio') : t('muteRadio')}
+            title={radioMuted ? t('unmuteRadio') : t('muteRadio')}
+            data-tip={radioMuted ? t('unmuteRadio') : t('muteRadio')}
+          >
+            {radioMuted || effectiveVolume === 0 ? <VolumeX size={15} /> : <Volume2 size={15} />}
+          </button>
+          <input
+            type="range"
+            className="slider w-20"
+            min={0}
+            max={200}
+            step={1}
+            dir="ltr"
+            value={Math.round(radioVolume * 100)}
+            onChange={(event) => setRadioVolume(Number(event.target.value) / 100)}
+            aria-label={t('radioVolume')}
+          />
+          <span className="w-8 text-end text-[11px] tabular-nums" style={{ color: 'var(--text-muted)' }}>
+            {Math.round(effectiveVolume * 100)}%
+          </span>
+        </div>
+      </div>
 
-            {(isLive || isStarting) && (
-              <button type="button" className="btn btn-secondary text-xs" onClick={stop}>
-                <CircleStop size={14} /> {t('radioStop')}
+      <div className="mt-1.5 flex min-h-5 items-center gap-2 text-[11px]">
+        {!radioEnabled ? (
+          <span style={{ color: 'var(--text-muted)' }}>{t('radioDisabled')}</span>
+        ) : !inVoice ? (
+          <span style={{ color: 'var(--text-muted)' }}>🎧 {t('joinVoiceFirst')}</span>
+        ) : isError ? (
+          <span style={{ color: 'var(--danger)' }}>
+            ⚠ {state?.error ?? t('radioError')}{' '}
+            {state?.station_id && (
+              <button type="button" className="btn btn-link" onClick={() => void play(state.station_id!)}>
+                {t('retry')}
               </button>
             )}
-          </div>
-        </>
-      )}
+          </span>
+        ) : isStarting ? (
+          <span style={{ color: 'var(--status-idle)' }}>◌ {t('radioStarting')}</span>
+        ) : isLive ? (
+          <span style={{ color: 'var(--text-secondary)' }}>
+            <strong style={{ color: 'var(--brand-primary)' }}>{t('radioPlaying')}</strong> · {state?.station_title}
+            {radioMuted && <span style={{ color: 'var(--text-muted)' }}> — {t('muteRadio')}</span>}
+          </span>
+        ) : (
+          <span style={{ color: 'var(--text-muted)' }}>{t('radioHint')}</span>
+        )}
+      </div>
     </section>
   );
 }

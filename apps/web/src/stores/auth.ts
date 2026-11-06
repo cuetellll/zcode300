@@ -24,10 +24,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   setSession: (user, accessToken) => set({ user, accessToken, status: 'authed' }),
   setToken: (accessToken) => set({ accessToken }),
   setUser: (user) => set({ user }),
-  clear: () => {
-    (window as unknown as { __mgBoot: string[] }).__mgBoot?.push('clear() called');
-    set({ user: null, accessToken: null, status: 'guest' });
-  },
+  clear: () => set({ user: null, accessToken: null, status: 'guest' }),
 }));
 
 export function getAccessToken(): string | null {

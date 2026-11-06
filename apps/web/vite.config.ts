@@ -13,5 +13,18 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: false,
+    target: 'es2020',
+    cssCodeSplit: true,
+    chunkSizeWarningLimit: 900,
+    rollupOptions: {
+      output: {
+        // Long-lived vendor chunks: app code changes don't invalidate them.
+        manualChunks: {
+          react: ['react', 'react-dom', 'react-router-dom'],
+          livekit: ['livekit-client'],
+          realtime: ['socket.io-client'],
+        },
+      },
+    },
   },
 });
