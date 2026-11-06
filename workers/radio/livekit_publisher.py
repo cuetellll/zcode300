@@ -78,7 +78,14 @@ class RadioPublisher:
         self._track = rtc.LocalAudioTrack.create_audio_track("Mahyar Radio", self._source)
         await self.room.local_participant.publish_track(
             self._track,
-            rtc.TrackPublishOptions(source=rtc.TrackSource.SOURCE_MICROPHONE),
+            rtc.TrackPublishOptions(
+                source=rtc.TrackSource.SOURCE_MICROPHONE,
+                # Opus RED (RFC 2198) breaks audio subscription on some
+                # clients; publish plain stereo opus instead.
+                red=False,
+                stereo=True,
+                dtx=False,
+            ),
         )
         log("radio audio track published")
         while True:
